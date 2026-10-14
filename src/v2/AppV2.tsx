@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PALETTE, clone } from "@/lib/utils";
 import { Icon } from "@/lib/icons";
 import { buildState, type Notif, type State2 } from "./model";
@@ -7,23 +7,69 @@ import { Home } from "./Home";
 import { Editor } from "./Editor";
 import { listChanges, Review } from "./Review";
 import { Btn, Modal, Placeholder, Sidebar } from "./ui";
+import { FocusEditor } from "@/v3/Focus";
+import { ProductPage } from "@/v3/Product";
 import "./v2.css";
+import "@/v3/v3.css";
 
-/** Version 2 · Notifications. Settings › Notifications, then a product's journey editor. */
-export default function AppV2() {
+/**
+ * Version 2 · Notifications: Settings › Notifications, then a product's journey editor.
+ * Version 3 (v3): Settings › Notifications, a product's list (table or timeline), then a focus editor
+ * showing one person's notifications on a pannable canvas.
+ */
+export default function AppV2({ v3 = false, layout = "table" }: { v3?: boolean; layout?: "table" | "timeline" }) {
   const DEF = useMemo(() => buildState(), []);
   const [S, setS] = useState<State2>(() => clone(DEF));
   const [pub, setPub] = useState<State2>(() => clone(DEF));
-  const [ui, setUiState] = useState<UI2>({ nav: "settings", page: "Notifications", view: "home", productId: "reimb", notifId: null, channel: "email", variantId: null, journeyOpen: true, journeyH: typeof window !== "undefined" ? Math.round(Math.min(380, window.innerHeight * 0.4)) : 340, zoom: typeof window !== "undefined" && window.innerWidth > 1800 ? 0.7 : 0.6, modal: null });
+  const [ui, setUiState] = useState<UI2>({ nav: "settings", page: "Notifications", view: "home", persona: "employee", listLayout: layout, productId: "reimb", notifId: null, channel: "email", variantId: null, journeyOpen: true, journeyH: typeof window !== "undefined" ? Math.round(Math.min(380, window.innerHeight * 0.4)) : 340, zoom: typeof window !== "undefined" && window.innerWidth > 1800 ? 0.7 : 0.6, modal: null });
   const [toasts, setToasts] = useState<{ id: number; msg: string }[]>([]);
   const tid = useRef(0);
 
   const setUi = useCallback((p: Partial<UI2> | ((u: UI2) => Partial<UI2>)) => setUiState((u) => ({ ...u, ...(typeof p === "function" ? p(u) : p) })), []);
-  const up = useCallback((fn: (d: State2) => void) => setS((s) => {
+  // Undo and redo (version 3's editor shows them). Typing within a moment counts as one step.
+  const cur = useRef(S);
+  cur.current = S;
+  const hist = useRef<{ past: State2[]; future: State2[]; at: number; typing: boolean }>({ past: [], future: [], at: 0, typing: false });
+  const up = useCallback((fn: (d: State2) => void) => {
+    const s = cur.current;
     const d = clone(s);
     fn(d);
-    return d;
-  }), []);
+    const h = hist.current;
+    const now = Date.now();
+    // keystrokes in the same text field become one undo step; anything else is its own step
+    const typing = !!(document.activeElement as HTMLElement | null)?.isContentEditable;
+    if (!(typing && h.typing && now - h.at < 1500)) {
+      h.past.push(s);
+      if (h.past.length > 60) h.past.shift();
+    }
+    h.typing = typing;
+    h.at = now;
+    h.future = [];
+    cur.current = d;
+    setS(d);
+  }, []);
+  const undo = useCallback(() => {
+    const h = hist.current;
+    const prev = h.past.pop();
+    if (!prev) return;
+    h.future.push(cur.current);
+    h.at = 0;
+    cur.current = prev;
+    setS(prev);
+  }, []);
+  const redo = useCallback(() => {
+    const h = hist.current;
+    const next = h.future.pop();
+    if (!next) return;
+    h.past.push(cur.current);
+    h.at = 0;
+    cur.current = next;
+    setS(next);
+  }, []);
+  // the DialKit layout choice sets the product page's starting layout
+  useEffect(() => setUiState((u) => ({ ...u, listLayout: layout })), [layout]);
+  // version 2 has no product page or persona canvas
+  useEffect(() => setUiState((u) => (!v3 && u.view === "product" ? { ...u, view: "home" } : u)), [v3]);
   const toast = useCallback((msg: string) => {
     const id = ++tid.current;
     setToasts((t) => [...t, { id, msg }]);
@@ -42,14 +88,22 @@ export default function AppV2() {
   );
   const changed = useMemo(() => listChanges(S, pub).map((c) => ({ product: c.group, name: c.title })), [S, pub]);
 
-  const ctx: Ctx2 = { S, pub, DEF, ui, setUi, up, upNotif, product, notif, changed, toast };
+  const ctx: Ctx2 = { S, pub, DEF, ui, setUi, up, upNotif, product, notif, changed, toast, v3, undo, redo, canUndo: hist.current.past.length > 0, canRedo: hist.current.future.length > 0 };
 
   return (
     <Ctx.Provider value={ctx}>
-      <div className="n2">
-        <Sidebar collapsed={ui.page === "Notifications" && ui.view === "editor"} />
-        <main className="n2-card">{ui.page !== "Notifications" ? <Placeholder key={ui.page} title={ui.page} /> : ui.view === "home" ? <Home /> : <Editor />}</main>
-      </div>
+      {v3 && ui.page === "Notifications" && ui.view === "editor" ? (
+        <div className="n2 n3-full">
+          <FocusEditor />
+        </div>
+      ) : (
+        <div className="n2">
+          <Sidebar collapsed={!v3 && ui.page === "Notifications" && ui.view === "editor"} />
+          <main className="n2-card">
+            {ui.page !== "Notifications" ? <Placeholder key={ui.page} title={ui.page} /> : ui.view === "home" ? <Home /> : ui.view === "product" && v3 ? <ProductPage /> : <Editor />}
+          </main>
+        </div>
+      )}
       {ui.modal === "branding" && Branding()}
       {ui.modal === "publish" && (
         <Review

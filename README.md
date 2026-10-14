@@ -1,8 +1,32 @@
 # Email Studio → Notifications
 
-Version 2.3.0. See `CHANGELOG.md`.
+Version 3.0.0. See `CHANGELOG.md`.
 
-The prototype holds two versions. Switch between them from the DialKit panel (the round button in the bottom-left corner) under **Prototype → version**. Version 2 opens by default.
+The prototype holds three versions. Switch between them from the DialKit panel (the round button in the bottom-left corner) under **Prototype → version**. Version 3 opens by default; **Prototype → productPage** picks its product page layout (Table or Timeline), which can also be switched on the page.
+
+## Version 3 · Focus canvas
+
+Same Settings › Notifications page as version 2. What changes is what happens after you open a product.
+
+- **Product page (before the editor).** Lists every notification before you see any editing. Two layouts:
+  - **List:** one table in the order a request moves. Each stage is a header on a timeline rail, with a short line on what happens at that stage. Rows show:
+    - the notification and the event that sends it;
+    - who’s told;
+    - its channels;
+    - when it goes out;
+    - whether it’s on.
+
+    Filter by Everyone, Employees, Approvers or Admins. Hovering a row shows **Open**.
+  - **Timeline:** stages across the top. Below them, one line per person, with a stop at each notification they get. Notifications that are off show as dashed stops, and summaries sit in an "Every morning" column.
+- **Focus editor.** Full screen, from your Figma focus editor:
+  - **Top bar:** close (back to the list), the product, a person picker (Employee / Approver / Admin) and a stage stepper. A step jumps to that person's notification at that stage, and steps where they hear nothing are disabled. Also undo/redo (⌘Z, ⇧⌘Z), Send test and Review & publish.
+  - **Canvas:** every notification for that person, in order. Each sits in its own box with E-mail, Slack and App notifications side by side, and a switch per channel. Versions and the reminder are rows inside the box. Drag to pan, but only as far as there is content; ⌘/Ctrl + scroll zooms. Click a box to select it; its editable text gets dashed outlines.
+  - **Panel (left):** the selected notification's settings.
+    - Channel switches.
+    - When: instantly and/or a periodic summary. Summaries get a schedule instead.
+    - Reminders, versions, and Back to default settings.
+
+Code: `src/v3/` (`Product.tsx`, `Focus.tsx`, `journey.ts`, `v3.css`). It reuses version 2's data, store, previews, review and controls; `AppV2` takes a `v3` flag.
 
 ## Version 2 · Notifications
 

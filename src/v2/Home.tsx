@@ -14,7 +14,7 @@ const LAST_EDIT: Record<string, string> = { reimb: "Edited 2 days ago", cards: "
 
 /** Settings › Notifications: connect channels, open a product, edit branding. */
 export function Home() {
-  const { S, DEF, up, setUi, toast } = use2();
+  const { S, DEF, up, setUi, toast, v3 } = use2();
   const used = (c: Channel) => S.products.reduce((a, p) => a + p.notifs.filter((n) => n.ch[c].on).length, 0);
   const setCh = (c: Channel, v: "connected" | "paused" | "none", msg: string) => {
     up((d) => void (d.channels[c] = v));
@@ -113,7 +113,7 @@ export function Home() {
             {S.products.map((p) => {
               const edited = !same(p, DEF.products.find((x) => x.id === p.id));
               return p.used ? (
-                <button type="button" className="n2-prod" key={p.id} onClick={() => setUi({ view: "editor", productId: p.id, notifId: null, variantId: null, journeyOpen: true })}>
+                <button type="button" className="n2-prod" key={p.id} onClick={() => setUi(v3 ? { view: "product", productId: p.id, notifId: null, variantId: null } : { view: "editor", productId: p.id, notifId: null, variantId: null, journeyOpen: true })}>
                   <Icon n={p.icon} s={18} />
                   <span className="grow">
                     <span className="t">{p.name}</span>

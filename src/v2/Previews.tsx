@@ -112,7 +112,7 @@ function Editable({ field, p, className, as = "span" }: { field: Field; p: EditP
 }
 
 /** Email: inbox line (sender, subject, preview text) above the email itself. */
-export function EmailPreview({ email, p, items }: { email: Email; p: EditProps; items?: DigestItem[] }) {
+export function EmailPreview({ email, p, items, fields }: { email: Email; p: EditProps; items?: DigestItem[]; fields?: boolean }) {
   // The email renders the current wording, without the version 1 "says it differently" cases.
   const shown: Email = {
     ...email,
@@ -129,6 +129,18 @@ export function EmailPreview({ email, p, items }: { email: Email; p: EditProps; 
   const known = new Set(Object.keys(p.copy.blocks || {}));
   return (
     <>
+      {fields ? (
+        <div className="n3-fields">
+          <div className="f">
+            <span className="k">Subject :</span>
+            <Editable field="subject" p={p} className="v" as="div" />
+          </div>
+          <div className="f">
+            <span className="k">Preheader :</span>
+            <Editable field="pre" p={p} className="v" as="div" />
+          </div>
+        </div>
+      ) : (
       <div className="n2-inbox">
         <div className="row">
           <span className="av" style={{ background: p.brand.color }}>
@@ -141,6 +153,7 @@ export function EmailPreview({ email, p, items }: { email: Email; p: EditProps; 
         <Editable field="subject" p={p} className="subj" as="div" />
         <Editable field="pre" p={p} className="pre" as="div" />
       </div>
+      )}
       <div className="n2-mail">
         <MailView
           email={shown}
@@ -201,7 +214,22 @@ export function SlackPreview({ p }: { p: EditProps }) {
 }
 
 /** App & mobile: the push on the lock screen. */
-export function AppPreview({ p }: { p: EditProps }) {
+export function AppPreview({ p, compact }: { p: EditProps; compact?: boolean }) {
+  if (compact)
+    return (
+      <div className="n3-push">
+        <div className="row">
+          <span className="ai" style={{ background: p.brand.color }}>
+            {(p.brand.company || "A")[0]}
+          </span>
+          <span className="app">EXPENSE</span>
+          <span className="grow" />
+          <span className="muted">now</span>
+        </div>
+        <Editable field="appTitle" p={p} className="title" as="div" />
+        <Editable field="appBody" p={p} className="text" as="div" />
+      </div>
+    );
   return (
     <div className="n2-phone">
       <div className="screen">

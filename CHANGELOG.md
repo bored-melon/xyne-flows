@@ -1,5 +1,20 @@
 # Changelog
 
+## 3.0.0 — 14 Oct 2026
+
+Version 3, "Focus canvas", from the Figma direction in Section 6. It is the default in DialKit; versions 2 and 1 are still there.
+
+- **Product page before editing.** A product opens on a list of its notifications instead of the editor. Two layouts, chosen in DialKit (Prototype → productPage) or on the page:
+  - **List:** a chronological table with a stage rail, a short line on what each stage means, the event that sends each notification, and a filter by person.
+  - **Timeline:** one line per person across the stages, with a stop for each notification; off notifications are dashed and summaries sit in their own column.
+- **Focus editor.**
+  - Full screen.
+  - A person picker and a stage stepper in the top bar.
+  - Every notification for that person on a canvas you can pan, bounded to the content. Each notification shows E-mail, Slack and App side by side, with a switch per channel and versions or the reminder as rows.
+  - The selected notification's settings on the left.
+- **Undo and redo** in the editor. Typing in one field counts as one step.
+- Email previews can show subject and preheader as labelled fields.
+
 ## 2.3.0 — 13 Oct 2026
 
 - **App navigation.** The left nav now has the app's two states:

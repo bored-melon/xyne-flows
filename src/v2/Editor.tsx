@@ -237,7 +237,7 @@ function Empty({ icon, title, children }: { icon: string; title: string; childre
 }
 
 /** Drag the background to move around. Only as far as there is something to see: the scroll area is the frames. */
-function usePan(ref: React.RefObject<HTMLDivElement>, zoom: (d: number) => void) {
+export function usePan(ref: React.RefObject<HTMLDivElement>, zoom: (d: number) => void) {
   const drag = useRef<{ x: number; y: number; sl: number; st: number; moved: boolean; id: number } | null>(null);
   const swallow = useRef(false);
   const [panning, setPanning] = useState(false);

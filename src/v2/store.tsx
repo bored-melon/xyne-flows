@@ -1,4 +1,5 @@
 import { createContext, useContext } from "react";
+import type { Audience } from "@/data/types";
 import type { Channel, Notif, Product, State2 } from "./model";
 
 export interface UI2 {
@@ -6,8 +7,12 @@ export interface UI2 {
   nav: "main" | "settings";
   /** The page open in that nav, by its label */
   page: string;
-  /** Inside Settings › Notifications: the overview, or a product's editor */
-  view: "home" | "editor";
+  /** Inside Settings › Notifications: the overview, a product's list (version 3), or the editor */
+  view: "home" | "product" | "editor";
+  /** Version 3: whose notifications the focus editor shows */
+  persona: Audience;
+  /** Version 3: how the product page lists notifications */
+  listLayout: "table" | "timeline";
   productId: string;
   /** Selected notification in the editor (null = none yet) */
   notifId: string | null;
@@ -36,6 +41,12 @@ export interface Ctx2 {
   notif: Notif | null;
   changed: { product: string; name: string }[];
   toast: (msg: string) => void;
+  /** Version 3 of the prototype is showing */
+  v3: boolean;
+  undo: () => void;
+  redo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
 }
 
 export const Ctx = createContext<Ctx2 | null>(null);

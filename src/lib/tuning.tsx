@@ -20,17 +20,27 @@ export const tune = {
   panMs: 350,
 };
 
-export type ProtoVersion = "1" | "2";
+export type ProtoVersion = "1" | "2" | "3";
+export type ListLayout = "table" | "timeline";
 
 const CONFIG = {
   Prototype: {
     version: {
       type: "select" as const,
       options: [
+        { value: "3", label: "Version 3 · Focus canvas" },
         { value: "2", label: "Version 2 · Notifications" },
         { value: "1", label: "Version 1 · Email studio" },
       ],
-      default: "2",
+      default: "3",
+    },
+    productPage: {
+      type: "select" as const,
+      options: [
+        { value: "table", label: "V3 product page · Table" },
+        { value: "timeline", label: "V3 product page · Timeline" },
+      ],
+      default: "table",
     },
   },
   Canvas: {
@@ -68,9 +78,10 @@ const CONFIG = {
 
 const px = (n: number) => n + "px";
 
-function Dials({ onVersion }: { onVersion: (v: ProtoVersion) => void }) {
-  const p = useDialKit("Email Studio", CONFIG, { id: "email-studio", persist: { key: "email-studio:tuning-v2" } });
-  useEffect(() => onVersion((p.Prototype.version as ProtoVersion) || "2"), [p.Prototype.version, onVersion]);
+function Dials({ onVersion, onLayout }: { onVersion: (v: ProtoVersion) => void; onLayout: (l: ListLayout) => void }) {
+  const p = useDialKit("Email Studio", CONFIG, { id: "email-studio", persist: { key: "email-studio:tuning-v3" } });
+  useEffect(() => onVersion((p.Prototype.version as ProtoVersion) || "3"), [p.Prototype.version, onVersion]);
+  useEffect(() => onLayout((p.Prototype.productPage as ListLayout) || "table"), [p.Prototype.productPage, onLayout]);
 
   useEffect(() => {
     const r = document.documentElement.style;
@@ -112,13 +123,14 @@ function Dials({ onVersion }: { onVersion: (v: ProtoVersion) => void }) {
 
 /**
  * Mount once. The panel opens from a small button in the bottom-left corner.
- * "Prototype → version" switches between version 1 (Email studio) and version 2 (Notifications);
- * the other dials tune version 1.
+ * "Prototype → version" switches between version 3 (Focus canvas), version 2 (Notifications) and
+ * version 1 (Email studio). "Prototype → productPage" picks version 3's product page layout.
+ * The other dials tune version 1.
  */
-export function Tuning({ onVersion }: { onVersion: (v: ProtoVersion) => void }) {
+export function Tuning({ onVersion, onLayout }: { onVersion: (v: ProtoVersion) => void; onLayout: (l: ListLayout) => void }) {
   return (
     <>
-      <Dials onVersion={onVersion} />
+      <Dials onVersion={onVersion} onLayout={onLayout} />
       <DialRoot position="bottom-left" defaultOpen={false} theme="light" productionEnabled />
     </>
   );
