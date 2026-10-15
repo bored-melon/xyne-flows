@@ -4,6 +4,32 @@ Version 2.3.0. See `CHANGELOG.md`.
 
 The prototype holds two versions. Switch between them from the DialKit panel (the round button in the bottom-left corner) under **Prototype → version**. Version 2 opens by default.
 
+## Payables › Procurement (branch `account-payables`)
+
+The app opens on **Payables › Procurement**. In the left nav, Procurement expands to its documents (Purchase requests, Quotations, Purchase orders, GRNs, Bills), followed by Payments, Vendors and Configurations. Every page except Procurement is still a placeholder.
+
+- **Summary anchor.** Switch between two styles with **Summary: Sentence / Cards** at the top right. The choice is remembered in the browser.
+  - **Sentence:** one line that summarises the board below, such as "Your team raised 19 requests worth INR 4.35 Cr. 13 documents are waiting on approvers…". Each highlighted number is a filter.
+  - **Cards:** four tiles that group the work by who holds it: Needs your team, With approvers, With vendors and Needs a fix. Each tile is a filter.
+- **Kanban.** Five boards: Purchase requests, Quotations, Purchase orders, GRNs and Bills.
+  - Each board header shows its count and value. Click a board's title to open its page.
+  - A colour strip shows the board's own statuses, sized by count. Hover a segment to see the count and value.
+  - Cards show the ID, a status chip, the title, the amount (marked "est." for estimates), a date, the linked document and the owner.
+- **Multiple filters.** Filters are a set of board-and-status pairs, and you can combine as many as you like.
+  - A header tag adds or removes all of its statuses at once.
+  - A strip segment or legend item adds or removes one status.
+  - Both edit the same set, so they stay in sync. A header tag shows as selected while all of its statuses are on.
+  - A bar under the summary lists the active filters ("Showing 25 of 96 documents"). Remove any one with ×, or use **Clear all** or Esc.
+  - Board headers switch to "5 of 19". A board with no matches shows an empty state.
+
+Every number is counted from the sample cards in `src/ap/data.ts`, so the summary, strips and boards always agree.
+
+| File | Contents |
+| --- | --- |
+| `src/ap/data.ts` | Boards, statuses, the 96 sample cards and INR formatting |
+| `src/ap/Procurement.tsx` | Page, both summary anchors, filter bar, boards and cards |
+| `src/ap/ap.css` | Styles |
+
 ## Version 2 · Notifications
 
 A calmer, progressive-reveal take for admins who aren't technical. One module covers email, Slack and in-app/mobile notifications. It is styled like the Unifying Account Payables web app: grey app background, sidebar, white content card and blue switches.

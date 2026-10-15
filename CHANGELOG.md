@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.4.0 — 15 Oct 2026 · account-payables
+
+- **Payables › Procurement.** This is the new landing page: a summary anchor above a kanban of purchase requests, quotations, purchase orders, GRNs and bills.
+- **Two summary styles.** Sentence (clickable numbers) and Cards (who holds the work). Switch between them from the header.
+- **Multiple filters.** Header tags and each board's colour strip add to the same filter set, so they can be combined freely. Active filters are listed with ×, and Clear all or Esc removes them.
+- **Navigation.** Payables now holds Procurement (which expands to its documents), Payments, Vendors and Configurations. The app opens on Procurement.
+
 ## 2.3.0 — 13 Oct 2026
 
 - **App navigation.** The left nav now has the app's two states:

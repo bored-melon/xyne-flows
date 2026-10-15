@@ -380,3 +380,10 @@ body:has(.n2-split i.on){cursor:row-resize;user-select:none}
 .n2-ph{display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;padding:72px 24px;border:1px dashed var(--n-line2);border-radius:16px;color:var(--n-mu)}
 .n2-ph .badge{width:56px;height:56px;border-radius:16px;background:#fff;border:1px solid var(--n-line);display:grid;place-items:center;color:var(--n-fg2);margin-bottom:6px;box-shadow:0 6px 16px -8px rgba(9,9,11,.12)}
 .n2-ph h3{font-size:20px;font-weight:400;color:var(--n-h1)}
+
+/* nav items with sub-pages (Payables › Procurement) */
+.n2-nav-item{display:flex;flex-direction:column;gap:2px}
+.n2-nav.sub{padding:7px 10px 7px 39px;font-size:14px;color:#3F3F46}
+.n2-nav-fold{display:grid;place-items:center;width:20px;height:20px;margin:-2px -4px -2px 0;border-radius:5px;flex:none}
+.n2-nav-fold:hover{background:rgba(9,9,11,.08)}
+.n2-nav.on .n2-nav-fold:hover{background:rgba(255,255,255,.2)}

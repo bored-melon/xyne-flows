@@ -7,6 +7,7 @@ import { Home } from "./Home";
 import { Editor } from "./Editor";
 import { listChanges, Review } from "./Review";
 import { Btn, Modal, Placeholder, Sidebar } from "./ui";
+import { Procurement } from "../ap/Procurement";
 import "./v2.css";
 
 /** Version 2 · Notifications. Settings › Notifications, then a product's journey editor. */
@@ -14,7 +15,7 @@ export default function AppV2() {
   const DEF = useMemo(() => buildState(), []);
   const [S, setS] = useState<State2>(() => clone(DEF));
   const [pub, setPub] = useState<State2>(() => clone(DEF));
-  const [ui, setUiState] = useState<UI2>({ nav: "settings", page: "Notifications", view: "home", productId: "reimb", notifId: null, channel: "email", variantId: null, journeyOpen: true, journeyH: typeof window !== "undefined" ? Math.round(Math.min(380, window.innerHeight * 0.4)) : 340, zoom: typeof window !== "undefined" && window.innerWidth > 1800 ? 0.7 : 0.6, modal: null });
+  const [ui, setUiState] = useState<UI2>({ nav: "main", page: "Procurement", view: "home", productId: "reimb", notifId: null, channel: "email", variantId: null, journeyOpen: true, journeyH: typeof window !== "undefined" ? Math.round(Math.min(380, window.innerHeight * 0.4)) : 340, zoom: typeof window !== "undefined" && window.innerWidth > 1800 ? 0.7 : 0.6, modal: null });
   const [toasts, setToasts] = useState<{ id: number; msg: string }[]>([]);
   const tid = useRef(0);
 
@@ -48,7 +49,7 @@ export default function AppV2() {
     <Ctx.Provider value={ctx}>
       <div className="n2">
         <Sidebar collapsed={ui.page === "Notifications" && ui.view === "editor"} />
-        <main className="n2-card">{ui.page !== "Notifications" ? <Placeholder key={ui.page} title={ui.page} /> : ui.view === "home" ? <Home /> : <Editor />}</main>
+        <main className="n2-card">{ui.page === "Procurement" ? <Procurement /> : ui.page !== "Notifications" ? <Placeholder key={ui.page} title={ui.page} /> : ui.view === "home" ? <Home /> : <Editor />}</main>
       </div>
       {ui.modal === "branding" && Branding()}
       {ui.modal === "publish" && (

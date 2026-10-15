@@ -97,7 +97,7 @@ export function Modal({ title, onClose, children, footer, width = 520 }: { title
 
 /* The two states of the app's left nav: the modules, and Settings. */
 
-type NavItem = { icon: string; label: string; dot?: boolean };
+type NavItem = { icon: string; label: string; dot?: boolean; children?: string[] };
 type NavGroup = { title?: string; items: NavItem[] };
 
 export const MAIN_NAV: NavGroup[] = [
@@ -106,12 +106,10 @@ export const MAIN_NAV: NavGroup[] = [
   {
     title: "Payables",
     items: [
-      { icon: "clipboard", label: "Purchase requests", dot: true },
-      { icon: "fileSearch", label: "Quotations" },
-      { icon: "clipboardList", label: "Purchase orders", dot: true },
-      { icon: "package", label: "Goods Received Notes" },
-      { icon: "fileDollar", label: "Bills" },
-      { icon: "library", label: "Masters" },
+      { icon: "layers", label: "Procurement", children: ["Purchase requests", "Quotations", "Purchase orders", "GRNs", "Bills"] },
+      { icon: "wallet", label: "Payments" },
+      { icon: "building", label: "Vendors" },
+      { icon: "sliders", label: "Configurations" },
     ],
   },
   { title: "Spend", items: [{ icon: "card", label: "Cards" }, { icon: "plane", label: "Travel Booking" }, { icon: "card", label: "Subscriptions" }] },
@@ -171,6 +169,7 @@ function Me() {
 export function Sidebar({ collapsed }: { collapsed?: boolean }) {
   const { ui, setUi } = use2();
   const [shut, setShut] = useState<Record<string, boolean>>({});
+  const [folded, setFolded] = useState<Record<string, boolean>>({});
   const list = useRef<HTMLDivElement>(null);
   // keep the open page visible when the list is taller than the screen
   useEffect(() => {
@@ -227,13 +226,46 @@ export function Sidebar({ collapsed }: { collapsed?: boolean }) {
                 </button>
               )}
               {!closed &&
-                g.items.map((it) => (
-                  <button type="button" key={it.label} className={"n2-nav" + (ui.page === it.label ? " on" : "")} aria-current={ui.page === it.label ? "page" : undefined} onClick={() => go(it.label)}>
-                    <Icon n={it.icon} s={17} />
-                    <span className="grow">{it.label}</span>
-                    {it.dot && <i className="dot" aria-label="New" />}
-                  </button>
-                ))}
+                g.items.map((it) => {
+                  const open = it.children && !folded[it.label];
+                  return (
+                    <div key={it.label} className="n2-nav-item">
+                      <button type="button" className={"n2-nav" + (ui.page === it.label ? " on" : "")} aria-current={ui.page === it.label ? "page" : undefined} onClick={() => go(it.label)}>
+                        <Icon n={it.icon} s={17} />
+                        <span className="grow">{it.label}</span>
+                        {it.dot && <i className="dot" aria-label="New" />}
+                        {it.children && (
+                          <span
+                            role="button"
+                            tabIndex={0}
+                            className="n2-nav-fold"
+                            aria-label={open ? `Hide ${it.label} pages` : `Show ${it.label} pages`}
+                            aria-expanded={!!open}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setFolded((f) => ({ ...f, [it.label]: !!open }));
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setFolded((f) => ({ ...f, [it.label]: !!open }));
+                              }
+                            }}
+                          >
+                            <Icon n={open ? "chevU" : "chevD"} s={14} />
+                          </span>
+                        )}
+                      </button>
+                      {open &&
+                        it.children!.map((c) => (
+                          <button type="button" key={c} className={"n2-nav sub" + (ui.page === c ? " on" : "")} aria-current={ui.page === c ? "page" : undefined} onClick={() => go(c)}>
+                            <span className="grow">{c}</span>
+                          </button>
+                        ))}
+                    </div>
+                  );
+                })}
             </div>
           );
         })}
