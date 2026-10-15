@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useDialKit } from "dialkit";
 import { Icon } from "@/lib/icons";
 import { SearchBar } from "../v2/ui";
 import { use2 } from "../v2/store";
-import { CARDS, COLUMNS, avatarColors, fkey, initials, inr, inrShort, sharedPr, toneOf, type Card, type Column, type Tone } from "./data";
+import { CARDS, COLUMNS, DEPTS, ENTITIES, avatarColors, fkey, initials, inr, inrShort, sharedPr, toneOf, type Card, type Column, type Tone } from "./data";
+import { Ph } from "./icons";
 import "./ap.css";
 
 /* Payables › Procurement: a summary anchor over a kanban of the five procurement documents.
@@ -60,9 +61,28 @@ interface Tag {
   tone: Tone;
 }
 
-const BY_KEY = CARDS.reduce<Record<string, Card[]>>((m, c) => ((m[fkey(c.col, c.status)] ||= []).push(c), m), {});
-const n = (keys: string[]) => keys.reduce((s, k) => s + (BY_KEY[k]?.length || 0), 0);
-const v = (keys: string[]) => keys.reduce((s, k) => s + (BY_KEY[k] || []).reduce((t, c) => t + c.amt, 0), 0);
+/* The header filters (period, entity, department) pick which documents are in play. Every count on
+   the page is taken from that set, so the sentence, tiles, strips and boards always agree. */
+interface Scope {
+  period: "quarter" | "month";
+  entity: string;
+  dept: string;
+}
+const ALL_SCOPE: Scope = { period: "quarter", entity: "", dept: "" };
+const inScope = (s: Scope) => (c: Card) => (s.period === "quarter" || !c.lastMonth) && (!s.entity || c.entity === s.entity) && (!s.dept || c.dept === s.dept);
+const scoped = (s: Scope) => (s === ALL_SCOPE ? CARDS : CARDS.filter(inScope(s)));
+
+function stats(cards: Card[]) {
+  const byKey = cards.reduce<Record<string, Card[]>>((m, c) => ((m[fkey(c.col, c.status)] ||= []).push(c), m), {});
+  return {
+    cards,
+    n: (keys: string[]) => keys.reduce((s, k) => s + (byKey[k]?.length || 0), 0),
+    v: (keys: string[]) => keys.reduce((s, k) => s + (byKey[k] || []).reduce((t, c) => t + c.amt, 0), 0),
+  };
+}
+type Stats = ReturnType<typeof stats>;
+const StatsCtx = createContext<Stats>(stats(CARDS));
+const useStats = () => useContext(StatsCtx);
 const colKeys = (col: Column) => col.statuses.map((s) => fkey(col.id, s.name));
 const LABEL = (key: string) => {
   const [col, st] = key.split(":");
@@ -92,8 +112,9 @@ const SENTENCE_TAGS: Tag[] = [tag("approvers", "Waiting on approvers"), tag("com
 
 const CARD_TAGS: Tag[] = [tag("team", "Needs your team"), tag("approvers", "With approvers"), tag("vendors", "With vendors"), tag("fix", "Needs a fix")];
 
-/** The sidebar page each board opens */
+/** The sidebar page each board's expand button opens */
 const PAGE: Record<Column["id"], string> = { pr: "Purchase requests", rfq: "Quotations", po: "Purchase orders", grn: "GRNs", bill: "Bills" };
+const NEW: Record<Column["id"], string> = { pr: "New purchase request", rfq: "New RFQ", po: "New purchase order", grn: "New GRN", bill: "New bill" };
 
 const isOn = (sel: Sel, keys: string[]) => keys.length > 0 && keys.every((k) => sel.has(k));
 
@@ -103,6 +124,9 @@ export function Procurement() {
   const k = dial["Kanban cards"];
   const card: CardOpts = { tagPos: (k.statusTag as TagPos) || "top-right", amount: k.amount, date: k.date, photo: k.profilePhoto, link: k.linkedRequest };
   const [sel, setSel] = useState<Sel>(() => new Set());
+  const [scope, setScope] = useState<Scope>(ALL_SCOPE);
+  const st = useMemo(() => stats(scoped(scope)), [scope]);
+  const scopeOn = scope !== ALL_SCOPE;
 
   /** Turn a group of keys on, or off if they are all on already. */
   const toggle = (keys: string[]) =>
@@ -118,16 +142,23 @@ export function Procurement() {
       keys.forEach((k) => next.delete(k));
       return next;
     });
-  const clear = () => setSel(new Set());
+  const clear = () => {
+    setSel(new Set());
+    setScope(ALL_SCOPE);
+  };
 
   useEffect(() => {
-    const esc = (e: KeyboardEvent) => e.key === "Escape" && setSel((s) => (s.size ? new Set() : s));
+    const esc = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      setSel((s) => (s.size ? new Set() : s));
+      setScope(ALL_SCOPE);
+    };
     document.addEventListener("keydown", esc);
     return () => document.removeEventListener("keydown", esc);
   }, []);
 
   const tags = anchor === "sentence" ? SENTENCE_TAGS : CARD_TAGS;
-  const shown = sel.size ? CARDS.filter((c) => sel.has(fkey(c.col, c.status))).length : CARDS.length;
+  const shown = sel.size ? st.cards.filter((c) => sel.has(fkey(c.col, c.status))).length : st.cards.length;
 
   return (
     <div className="n2-page ap-page">
@@ -137,28 +168,121 @@ export function Procurement() {
           <h1 className="n2-h1">Procurement</h1>
         </div>
 
-        {anchor === "sentence" ? <SentenceAnchor sel={sel} toggle={toggle} /> : <CardsAnchor sel={sel} toggle={toggle} />}
+        <StatsCtx.Provider value={st}>
+          <section className="ap-summary" aria-label="Summary">
+            <HeaderFilters scope={scope} setScope={setScope} />
+            {anchor === "sentence" ? <SentenceAnchor sel={sel} toggle={toggle} /> : <CardsAnchor sel={sel} toggle={toggle} />}
+          </section>
 
-        <FilterBar sel={sel} tags={tags} shown={shown} remove={remove} clear={clear} />
+          <FilterBar sel={sel} tags={tags} shown={shown} scopeOn={scopeOn} remove={remove} clear={clear} />
 
-        <div className="ap-board-wrap">
-          <div className="ap-board">
-            {COLUMNS.map((col) => (
-              <Board key={col.id} col={col} sel={sel} toggle={toggle} card={card} />
-            ))}
+          <div className="ap-board-wrap">
+            <div className="ap-board">
+              {COLUMNS.map((col) => (
+                <Board key={col.id} col={col} sel={sel} toggle={toggle} card={card} />
+              ))}
+            </div>
           </div>
-        </div>
+        </StatsCtx.Provider>
       </div>
     </div>
   );
 }
 
-function Quarter() {
+/** Open/close for a small menu: closes on an outside click, and Esc closes it before it clears filters. */
+function useMenu() {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const down = (e: MouseEvent) => ref.current && !ref.current.contains(e.target as Node) && setOpen(false);
+    const key = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.stopPropagation();
+      setOpen(false);
+    };
+    document.addEventListener("mousedown", down);
+    window.addEventListener("keydown", key, true);
+    return () => {
+      document.removeEventListener("mousedown", down);
+      window.removeEventListener("keydown", key, true);
+    };
+  }, [open]);
+  return { open, setOpen, ref };
+}
+
+interface Opt {
+  value: string;
+  label: string;
+  count: number;
+}
+
+function Dropdown({ name, value, opts, onChange }: { name: string; value: string; opts: Opt[]; onChange: (v: string) => void }) {
+  const m = useMenu();
+  const cur = opts.find((o) => o.value === value) || opts[0];
   return (
-    <button type="button" className="ap-quarter">
-      This quarter
-      <Icon n="chevD" s={16} />
-    </button>
+    <div className="ap-dd" ref={m.ref}>
+      <button type="button" className={"ap-filter-btn" + (value !== opts[0].value ? " set" : "")} aria-haspopup="listbox" aria-expanded={m.open} aria-label={`${name}: ${cur.label}`} onClick={() => m.setOpen(!m.open)}>
+        {cur.label}
+        <Icon n="chevD" s={16} />
+      </button>
+      {m.open && (
+        <div className="ap-menu" role="listbox" aria-label={name}>
+          <div className="ap-menu-h">{name}</div>
+          {opts.map((o) => (
+            <button
+              key={o.value}
+              type="button"
+              role="option"
+              aria-selected={o.value === value}
+              className={o.value === value ? "on" : ""}
+              onClick={() => {
+                onChange(o.value);
+                m.setOpen(false);
+              }}
+            >
+              <span className="grow">{o.label}</span>
+              <span className="ap-menu-n">{o.count}</span>
+              <span className="ap-menu-tick">{o.value === value && <Icon n="check" s={14} w={2} />}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Period, entity and department. Option counts are what each choice would show, given the other two. */
+function HeaderFilters({ scope, setScope }: { scope: Scope; setScope: (s: Scope) => void }) {
+  const count = (s: Scope) => CARDS.filter(inScope(s)).length;
+  const set = (patch: Partial<Scope>) => {
+    const next = { ...scope, ...patch };
+    setScope(next.period === "quarter" && !next.entity && !next.dept ? ALL_SCOPE : next);
+  };
+  return (
+    <div className="ap-filters-row">
+      <Dropdown
+        name="Period"
+        value={scope.period}
+        opts={[
+          { value: "quarter", label: "This quarter", count: count({ ...scope, period: "quarter" }) },
+          { value: "month", label: "This month", count: count({ ...scope, period: "month" }) },
+        ]}
+        onChange={(v) => set({ period: v as Scope["period"] })}
+      />
+      <Dropdown
+        name="Entity"
+        value={scope.entity}
+        opts={[{ value: "", label: "All entities", count: count({ ...scope, entity: "" }) }, ...ENTITIES.map((e) => ({ value: e, label: e, count: count({ ...scope, entity: e }) }))]}
+        onChange={(v) => set({ entity: v })}
+      />
+      <Dropdown
+        name="Department"
+        value={scope.dept}
+        opts={[{ value: "", label: "All departments", count: count({ ...scope, dept: "" }) }, ...DEPTS.map((d) => ({ value: d, label: d, count: count({ ...scope, dept: d }) }))]}
+        onChange={(v) => set({ dept: v })}
+      />
+    </div>
   );
 }
 
@@ -173,27 +297,62 @@ function Pill({ tag, label, sel, toggle }: { tag: Tag; label: string; sel: Sel; 
 }
 
 function SentenceAnchor({ sel, toggle }: { sel: Sel; toggle: (k: string[]) => void }) {
+  const { cards, n, v } = useStats();
   const [appr, cmp, mis, paid] = SENTENCE_TAGS;
   const plural = (k: number, one: string, many: string) => `${k} ${k === 1 ? one : many}`;
-  const requests = CARDS.filter((c) => c.col === "pr");
+  const requests = cards.filter((c) => c.col === "pr");
   const pill = (t: Tag, one: string, many: string) => <Pill tag={t} label={plural(n(t.keys), one, many)} sel={sel} toggle={toggle} />;
+  const one = (t: Tag) => n(t.keys) === 1;
+
+  // Clauses with nothing in them drop out, so a narrow filter never reads "0 bills don't match".
+  const clauses = [
+    n(appr.keys) > 0 && (
+      <>
+        {pill(appr, "document", "documents")} {one(appr) ? "is" : "are"} waiting on approvers
+      </>
+    ),
+    n(cmp.keys) > 0 && (
+      <>
+        {pill(cmp, "quote", "quotes")} {one(cmp) ? "is" : "are"} ready to compare
+      </>
+    ),
+    n(mis.keys) > 0 && (
+      <>
+        {pill(mis, "bill", "bills")} {one(mis) ? "doesn’t" : "don’t"} match {one(mis) ? "its order" : "their orders"}
+      </>
+    ),
+  ].filter(Boolean);
+  const joined = clauses.map((c, i) => (
+    <span key={i}>
+      {i > 0 && (i === clauses.length - 1 ? (clauses.length > 2 ? ", and " : " and ") : ", ")}
+      {c}
+    </span>
+  ));
+
   return (
-    <section className="ap-sentence" aria-label="Summary">
-      <Quarter />
-      <div className="grow">
-        <p className="ap-sentence-text">
-          Your team raised <span className="ap-strong">{plural(requests.length, "request", "requests")}</span> worth {inrShort(requests.reduce((t, c) => t + c.amt, 0))}.{" "}
-          {pill(appr, "document", "documents")} {n(appr.keys) === 1 ? "is" : "are"} waiting on approvers, {pill(cmp, "quote", "quotes")} {n(cmp.keys) === 1 ? "is" : "are"} ready to compare, and{" "}
-          {pill(mis, "bill", "bills")} {n(mis.keys) === 1 ? "doesn’t" : "don’t"} match {n(mis.keys) === 1 ? "its order" : "their orders"}. {pill(paid, "bill", "bills")} worth {inrShort(v(paid.keys))}{" "}
-          {n(paid.keys) === 1 ? "has" : "have"} been paid.
-        </p>
-        {!sel.size && <p className="ap-hint">Click a highlighted number, or a colour strip on a board, to filter. You can pick as many as you like.</p>}
-      </div>
-    </section>
+    <div className="ap-sentence">
+      <p className="ap-sentence-text">
+        {requests.length ? (
+          <>
+            Your team raised <span className="ap-strong">{plural(requests.length, "request", "requests")}</span> worth {inrShort(requests.reduce((t, c) => t + c.amt, 0))}.
+          </>
+        ) : (
+          <>Your team hasn’t raised any requests.</>
+        )}{" "}
+        {clauses.length ? <>{joined}.</> : <>Nothing is waiting on approvers, quotes or bills.</>}{" "}
+        {n(paid.keys) > 0 && (
+          <>
+            {pill(paid, "bill", "bills")} worth {inrShort(v(paid.keys))} {one(paid) ? "has" : "have"} been paid.
+          </>
+        )}
+      </p>
+      {!sel.size && <p className="ap-hint">Click a highlighted number, or a colour strip on a board, to filter. You can pick as many as you like.</p>}
+    </div>
   );
 }
 
 function CardsAnchor({ sel, toggle }: { sel: Sel; toggle: (k: string[]) => void }) {
+  const { n, v } = useStats();
   const c = (k: string) => n([k]);
   const subs: Record<string, string> = {
     team: `${c("rfq:Received")} quotes to compare · ${c("grn:Submitted")} receipts to check · ${c("bill:Approved")} bills to pay`,
@@ -202,7 +361,7 @@ function CardsAnchor({ sel, toggle }: { sel: Sel; toggle: (k: string[]) => void 
     fix: `${c("bill:Mismatch")} bill mismatches · ${c("pr:Rejected") + c("po:Rejected") + c("grn:Rejected")} rejected documents`,
   };
   return (
-    <section className="ap-tiles-row" aria-label="Summary">
+    <div className="ap-tiles-row">
       <div className="ap-tiles">
         {CARD_TAGS.map((t) => {
           const on = isOn(sel, t.keys);
@@ -221,14 +380,13 @@ function CardsAnchor({ sel, toggle }: { sel: Sel; toggle: (k: string[]) => void 
           );
         })}
       </div>
-      <Quarter />
-    </section>
+    </div>
   );
 }
 
 /** What's filtered, as chips. Whole anchor tags show by name; single statuses as "Board · Status". */
-function FilterBar({ sel, tags, shown, remove, clear }: { sel: Sel; tags: Tag[]; shown: number; remove: (k: string[]) => void; clear: () => void }) {
-  if (!sel.size) return null;
+function FilterBar({ sel, tags, shown, scopeOn, remove, clear }: { sel: Sel; tags: Tag[]; shown: number; scopeOn: boolean; remove: (k: string[]) => void; clear: () => void }) {
+  if (!sel.size && !scopeOn) return null;
   const covered = new Set<string>();
   const chips: { label: string; keys: string[]; tone: Tone }[] = [];
   for (const t of tags)
@@ -265,15 +423,16 @@ function FilterBar({ sel, tags, shown, remove, clear }: { sel: Sel; tags: Tag[];
 
 function Board({ col, sel, toggle, card }: { col: Column; sel: Sel; toggle: (k: string[]) => void; card: CardOpts }) {
   const { setUi } = use2();
+  const { cards, n, v } = useStats();
   const [hover, setHover] = useState<string | null>(null);
-  const strip = useRef<HTMLDivElement>(null);
-  const all = useMemo(() => CARDS.filter((c) => c.col === col.id), [col.id]);
+  const all = useMemo(() => cards.filter((c) => c.col === col.id), [cards, col.id]);
   const filtered = sel.size > 0;
   const visible = filtered ? all.filter((c) => sel.has(fkey(col.id, c.status))) : all;
   const ordered = [...visible].sort((a, b) => col.order.indexOf(a.status) - col.order.indexOf(b.status));
   const counts = col.statuses.map((s) => ({ ...s, key: fkey(col.id, s.name), n: n([fkey(col.id, s.name)]), v: v([fkey(col.id, s.name)]) })).filter((s) => s.n > 0);
   const total = all.length;
   const sum = visible.reduce((t, c) => t + c.amt, 0);
+  const mine = colKeys(col).filter((k) => sel.has(k));
 
   // where each segment sits, for the hover tooltip
   let acc = 0;
@@ -289,23 +448,21 @@ function Board({ col, sel, toggle, card }: { col: Column; sel: Sel; toggle: (k: 
     <section className="ap-col" aria-label={col.title}>
       <div className="ap-col-head">
         <div className="ap-col-title">
-          <button type="button" className="ap-col-open" title={`Open ${col.title}`} onClick={() => setUi({ page: PAGE[col.id] })}>
-            <h3>{col.title}</h3>
-            <Icon n="chevR" s={13} />
-          </button>
+          <h3>{col.title}</h3>
           <span className="grow" />
-          <button type="button" className="ap-ico" aria-label={`New ${col.title.replace(/s$/, "").toLowerCase()}`}>
-            <Icon n="plus" s={14} />
-          </button>
-          <button type="button" className="ap-ico" aria-label="More">
-            <Icon n="dotsV" s={14} />
-          </button>
+          <div className="ap-col-tools">
+            <button type="button" className="ap-ico" title={`Open ${PAGE[col.id]}`} aria-label={`Open ${PAGE[col.id]}`} onClick={() => setUi({ page: PAGE[col.id] })}>
+              <Ph n="expand" />
+            </button>
+            <BoardFilter col={col} counts={counts} sel={sel} toggle={toggle} active={mine.length > 0} />
+            <BoardMore col={col} visible={ordered} onNew={() => setUi({ page: PAGE[col.id] })} />
+          </div>
         </div>
         <div className="ap-col-sub">
-          <span className={"cnt" + (filtered ? (visible.length ? " hit" : " none") : "")}>{filtered ? `${visible.length} of ${total}` : `${total} ${col.noun}`}</span>
+          <span className={"cnt" + (filtered ? (visible.length ? " hit" : " none") : "")}>{filtered ? `${visible.length} of ${total}` : `${total} ${total === 1 ? col.noun.replace(/s$/, "") : col.noun}`}</span>
           <span className="val">{inrShort(sum)}</span>
         </div>
-        <div className="ap-strip" ref={strip} onMouseLeave={() => setHover(null)}>
+        <div className="ap-strip" onMouseLeave={() => setHover(null)}>
           {segs.map((s) => {
             const on = sel.has(s.key);
             return (
@@ -323,6 +480,7 @@ function Board({ col, sel, toggle, card }: { col: Column; sel: Sel; toggle: (k: 
               />
             );
           })}
+          {!segs.length && <span className="ap-seg-empty" />}
           {tip && (
             <span className="ap-tip" style={{ left: `${tip.left + tip.w / 2}%` }} role="tooltip">
               <b>
@@ -352,6 +510,83 @@ function Board({ col, sel, toggle, card }: { col: Column; sel: Sel; toggle: (k: 
         {!ordered.length && <div className="ap-empty">No {col.noun} match these filters</div>}
       </div>
     </section>
+  );
+}
+
+type Count = { name: string; tone: Tone; key: string; n: number };
+
+/** The board's own statuses as a checklist. Same keys as the strip, so both stay in sync. */
+function BoardFilter({ col, counts, sel, toggle, active }: { col: Column; counts: Count[]; sel: Sel; toggle: (k: string[]) => void; active: boolean }) {
+  const m = useMenu();
+  const on = counts.filter((s) => sel.has(s.key)).map((s) => s.key);
+  return (
+    <div className="ap-dd" ref={m.ref}>
+      <button type="button" className={"ap-ico" + (active ? " active" : "")} title={`Filter ${col.title}`} aria-label={`Filter ${col.title}`} aria-expanded={m.open} onClick={() => m.setOpen(!m.open)}>
+        <Ph n="funnel" />
+        {active && <i className="ap-ico-dot" />}
+      </button>
+      {m.open && (
+        <div className="ap-menu right" role="menu" aria-label={`Filter ${col.title}`}>
+          <div className="ap-menu-h">Status</div>
+          {counts.map((s) => (
+            <button key={s.key} type="button" role="menuitemcheckbox" aria-checked={sel.has(s.key)} className={sel.has(s.key) ? "on" : ""} onClick={() => toggle([s.key])}>
+              <i className={`ap-menu-dot ${s.tone}`} />
+              <span className="grow">{s.name}</span>
+              <span className="ap-menu-n">{s.n}</span>
+              <span className="ap-menu-tick">{sel.has(s.key) && <Icon n="check" s={14} w={2} />}</span>
+            </button>
+          ))}
+          {!counts.length && <div className="ap-menu-empty">Nothing here for these filters</div>}
+          {on.length > 0 && (
+            <>
+              <div className="ap-menu-sep" />
+              <button type="button" onClick={() => toggle(on)}>
+                <span className="grow">Clear board filters</span>
+              </button>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BoardMore({ col, visible, onNew }: { col: Column; visible: Card[]; onNew: () => void }) {
+  const m = useMenu();
+  const exportCsv = () => {
+    const q = (x: string | number) => `"${String(x).replace(/"/g, '""')}"`;
+    const rows = [["ID", "Status", "Title", "Amount (INR)", "Date", "Owner", "Entity", "Department"], ...visible.map((c) => [c.id, c.status, c.title, c.amt, c.date, c.owner, c.entity, c.dept])];
+    const url = URL.createObjectURL(new Blob([rows.map((r) => r.map(q).join(",")).join("\n")], { type: "text/csv" }));
+    const a = Object.assign(document.createElement("a"), { href: url, download: `${col.title.toLowerCase().replace(/\s+/g, "-")}.csv` });
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    m.setOpen(false);
+  };
+  return (
+    <div className="ap-dd" ref={m.ref}>
+      <button type="button" className="ap-ico" title="More options" aria-label={`More options for ${col.title}`} aria-expanded={m.open} onClick={() => m.setOpen(!m.open)}>
+        <Ph n="more" />
+      </button>
+      {m.open && (
+        <div className="ap-menu right" role="menu" aria-label={`${col.title} options`}>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              m.setOpen(false);
+              onNew();
+            }}
+          >
+            <Icon n="plus" s={14} />
+            <span className="grow">{NEW[col.id]}</span>
+          </button>
+          <button type="button" role="menuitem" onClick={exportCsv} disabled={!visible.length}>
+            <Icon n="download" s={14} />
+            <span className="grow">Export {visible.length} as CSV</span>
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
 

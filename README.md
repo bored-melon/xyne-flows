@@ -8,11 +8,12 @@ The prototype holds two versions. Switch between them from the DialKit panel (th
 
 The app opens on **Payables › Procurement**. In the left nav, Procurement expands to its documents (Purchase requests, Quotations, Purchase orders, GRNs, Bills), followed by Payments, Vendors and Configurations. Every page except Procurement is still a placeholder.
 
+- **Header filters.** Period (This quarter, This month), Entity (Juspay, Jusbiz) and Department narrow every number on the page: the summary, the strips and the boards. Each document inherits its entity and department from the request it traces back to. Each option shows how many documents it would leave.
 - **Summary anchor.** Choose the style in the DialKit panel (button at the bottom left) under **Procurement › Summary › Layout**. The choice is remembered in the browser.
   - **Sentence:** one line that summarises the board below, such as "Your team raised 19 requests worth INR 4.35 Cr. 13 documents are waiting on approvers…". Each highlighted number is a filter.
   - **Cards:** four tiles that group the work by who holds it: Needs your team, With approvers, With vendors and Needs a fix. Each tile is a filter.
 - **Kanban.** Five boards: Purchase requests, Quotations, Purchase orders, GRNs and Bills.
-  - Each board header shows its count and value. Click a board's title to open its page.
+  - Each board header shows its count and value, and three buttons: **expand** opens that board's module page, **filter** lists the board's statuses as a checklist (the same filters as its colour strip), and **more** has New … and Export as CSV.
   - A colour strip shows the board's own statuses, sized by count. Hover a segment to see the count and value.
   - Cards show the ID, a status chip, the title, the amount (marked "est." for estimates), a date and the owner. Only purchase orders that share a request show a link to it ("REQ-2041 · 2 of 3 POs").
   - In DialKit under **Procurement › Kanban cards**: **Status Tag** moves the chip (Top right, Before ID, After ID, Bottom left), and **Amount**, **Date**, **Profile Photo** and **Linked Request** show or hide each detail.

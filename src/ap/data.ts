@@ -2,6 +2,11 @@
 
 export type Tone = "neutral" | "amber" | "green" | "red" | "blue" | "violet";
 export type ColId = "pr" | "rfq" | "po" | "grn" | "bill";
+export type Entity = "Juspay" | "Jusbiz";
+export type Dept = "Engineering" | "IT" | "Marketing" | "Operations" | "People" | "Finance";
+
+export const ENTITIES: Entity[] = ["Juspay", "Jusbiz"];
+export const DEPTS: Dept[] = ["Engineering", "IT", "Marketing", "Operations", "People", "Finance"];
 
 export interface Status {
   name: string;
@@ -34,6 +39,11 @@ export interface Card {
   /** For purchase orders: the request it was raised from */
   pr?: string;
   owner: string;
+  /** Inherited from the request the document traces back to */
+  entity: Entity;
+  dept: Dept;
+  /** Last activity was in September, i.e. before this month */
+  lastMonth: boolean;
 }
 
 export const COLUMNS: Column[] = [
@@ -212,19 +222,88 @@ const RAW: Record<ColId, Row[]> = {
   ],
 };
 
+/* Who each request belongs to. Quotes, POs, receipts and bills inherit it through their links. */
+const REQ_META: Record<string, [Dept, Entity]> = {
+  "REQ-2088": ["Engineering", "Jusbiz"],
+  "REQ-2091": ["Marketing", "Juspay"],
+  "REQ-2095": ["IT", "Juspay"],
+  "REQ-2096": ["People", "Juspay"],
+  "REQ-2097": ["Engineering", "Jusbiz"],
+  "REQ-2093": ["Operations", "Jusbiz"],
+  "REQ-2098": ["Operations", "Juspay"],
+  "REQ-2085": ["IT", "Juspay"],
+  "REQ-2079": ["Finance", "Juspay"],
+  "REQ-2081": ["Operations", "Juspay"],
+  "REQ-2041": ["IT", "Juspay"],
+  "REQ-2066": ["Operations", "Jusbiz"],
+  "REQ-2077": ["Operations", "Jusbiz"],
+  "REQ-2072": ["Engineering", "Juspay"],
+  "REQ-2069": ["IT", "Jusbiz"],
+  "REQ-2070": ["Engineering", "Jusbiz"],
+  "REQ-2083": ["Marketing", "Juspay"],
+  "REQ-2086": ["Finance", "Juspay"],
+  "REQ-2074": ["People", "Juspay"],
+  "REQ-2049": ["Operations", "Jusbiz"],
+  "REQ-2058": ["Operations", "Juspay"],
+  "REQ-2044": ["People", "Juspay"],
+  "REQ-2051": ["Operations", "Juspay"],
+  "REQ-2062": ["Engineering", "Juspay"],
+  "REQ-2055": ["Operations", "Jusbiz"],
+  "REQ-2031": ["Engineering", "Juspay"],
+  "REQ-2029": ["People", "Juspay"],
+  "REQ-2034": ["Operations", "Jusbiz"],
+  "REQ-2064": ["Operations", "Juspay"],
+};
+/** Older POs that only appear as links from receipts and bills */
+const PO_META: Record<string, [Dept, Entity]> = {
+  "PO-1160": ["IT", "Juspay"],
+  "PO-1162": ["IT", "Jusbiz"],
+  "PO-1164": ["Operations", "Juspay"],
+  "PO-1166": ["IT", "Jusbiz"],
+  "PO-1168": ["IT", "Juspay"],
+  "PO-1170": ["Operations", "Jusbiz"],
+  "PO-1172": ["Operations", "Juspay"],
+  "PO-1180": ["Operations", "Jusbiz"],
+  "PO-1158": ["Operations", "Juspay"],
+  "PO-1150": ["IT", "Jusbiz"],
+};
+/** Bills with no PO */
+const OWN_META: Record<string, [Dept, Entity]> = {
+  "BILL-887": ["Engineering", "Juspay"],
+  "BILL-895": ["Engineering", "Juspay"],
+};
+const PO_REQ = Object.fromEntries(RAW.po.map((r) => [r[0], r[7].match(/REQ-\d+/)?.[0]]));
+
+function metaFor(id: string, link: string): [Dept, Entity] {
+  const req = REQ_META[id] ? id : link.match(/REQ-\d+/)?.[0];
+  if (req && REQ_META[req]) return REQ_META[req];
+  const po = link.match(/PO-\d+/)?.[0];
+  if (po && PO_REQ[po] && REQ_META[PO_REQ[po]!]) return REQ_META[PO_REQ[po]!];
+  if (po && PO_META[po]) return PO_META[po];
+  if (OWN_META[id]) return OWN_META[id];
+  console.warn(`[procurement] no department or entity for ${id}`);
+  return ["Operations", "Juspay"];
+}
+
 export const CARDS: Card[] = (Object.keys(RAW) as ColId[]).flatMap((col) =>
-  RAW[col].map(([id, status, sub, title, amt, disp, date, link, owner]) => ({
-    id,
-    col,
-    status,
-    sub: sub || undefined,
-    title,
-    amt,
-    disp: disp || undefined,
-    date,
-    pr: col === "po" ? link.match(/REQ-\d+/)?.[0] : undefined,
-    owner,
-  })),
+  RAW[col].map(([id, status, sub, title, amt, disp, date, link, owner]) => {
+    const [dept, entity] = metaFor(id, link);
+    return {
+      id,
+      col,
+      status,
+      sub: sub || undefined,
+      title,
+      amt,
+      disp: disp || undefined,
+      date,
+      pr: col === "po" ? link.match(/REQ-\d+/)?.[0] : undefined,
+      owner,
+      entity,
+      dept,
+      lastMonth: / Sep\b/.test(date),
+    };
+  }),
 );
 
 /** POs raised from the same request. Only these cards carry a link: "REQ-2041 · 2 of 3 POs". */

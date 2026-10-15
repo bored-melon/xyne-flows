@@ -8,13 +8,35 @@
   --c-violet-bg:#F5F3FF;--c-violet-fg:#7008E7;--c-violet-ln:#DDD6FF}
 .ap-main{padding:8px 28px 32px;min-width:1160px;display:flex;flex-direction:column;gap:24px;min-width:0}
 .ap-head{display:flex;align-items:center;gap:10px}
-.ap-page .ap-quarter{display:inline-flex;align-items:center;gap:10px;padding:6px 12px;border-radius:6px;background:#F5F5F5;font-size:16px;font-weight:500;line-height:1.5;text-transform:uppercase;color:#525252;flex:none;align-self:flex-start;margin-top:10px}
-.ap-page .ap-quarter:hover{background:#EBEBEB}
-.ap-page .ap-quarter svg{flex:none}
+/* header filters — Figma 2921:33707 */
+.ap-summary{display:flex;flex-direction:column;gap:16px}
+.ap-filters-row{display:flex;gap:10px;flex-wrap:wrap}
+.ap-dd{position:relative}
+.ap-page .ap-filter-btn{display:inline-flex;align-items:center;gap:10px;padding:6px 12px;border-radius:6px;background:#F5F5F5;font-size:16px;font-weight:500;line-height:1.5;color:#525252;white-space:nowrap}
+.ap-page .ap-filter-btn.set{color:#171717;background:#EBEBEB}
+.ap-page .ap-filter-btn[aria-expanded=true]{background:#EBEBEB}
+.ap-page .ap-filter-btn:hover{background:#EBEBEB}
+.ap-page .ap-filter-btn svg{flex:none}
+/* menus */
+.ap-menu{position:absolute;top:calc(100% + 6px);left:0;z-index:20;min-width:208px;display:flex;flex-direction:column;padding:4px;background:#fff;border:1px solid #E5E5E5;border-radius:10px;box-shadow:0 12px 32px -8px rgba(0,0,0,.18),0 2px 6px rgba(0,0,0,.05)}
+.ap-menu.right{left:auto;right:-4px}
+.ap-menu-h{padding:6px 8px 4px;font-size:11px;font-weight:500;letter-spacing:.04em;text-transform:uppercase;color:#A1A1A1}
+.ap-page .ap-menu>button{display:flex;align-items:center;gap:8px;height:32px;padding:0 8px;border-radius:6px;font-size:14px;color:#262626;text-align:left;white-space:nowrap}
+.ap-page .ap-menu>button:hover{background:#F5F5F5}
+.ap-page .ap-menu>button.on{font-weight:500;color:#171717}
+.ap-page .ap-menu>button:disabled{opacity:.45;cursor:default;background:none}
+.ap-page .ap-menu>button>svg{color:#737373;flex:none}
+.ap-menu-n{font-size:12px;color:#A1A1A1;font-variant-numeric:tabular-nums}
+.ap-menu-tick{width:14px;display:grid;place-items:center;color:var(--n-acc)}
+.ap-menu-tick svg{color:var(--n-acc)!important}
+.ap-menu-sep{height:1px;background:#F0F0F0;margin:4px 0}
+.ap-menu-empty{padding:8px;font-size:13px;color:#A1A1A1}
+.ap-menu-dot{width:6px;height:6px;border-radius:50%;flex:none}
+.ap-menu-dot.neutral{background:var(--t-neutral)}.ap-menu-dot.amber{background:var(--t-amber)}.ap-menu-dot.green{background:var(--t-green)}.ap-menu-dot.red{background:var(--t-red)}.ap-menu-dot.blue{background:var(--t-blue)}.ap-menu-dot.violet{background:var(--t-violet)}
 
 /* sentence anchor */
-.ap-sentence{display:flex;gap:24px;align-items:flex-start}
-.ap-sentence-text{font-size:32px;line-height:1.75;color:#404040;letter-spacing:-.01em;max-width:1240px}
+.ap-sentence{display:block}
+.ap-sentence-text{font-size:32px;line-height:1.75;color:#525252;letter-spacing:-.01em;max-width:1240px}
 .ap-sentence-text .ap-strong{font-weight:500;color:#171717}
 .ap-page .ap-pill{display:inline-flex;align-items:center;gap:8px;padding:2px 12px;margin:0 2px;border-radius:8px;font-weight:500;line-height:1.5;vertical-align:baseline;transition:opacity .15s,background .15s}
 .ap-page .ap-pill svg{flex:none;margin-right:-4px}
@@ -27,7 +49,7 @@
 .ap-page .ap-pill.on{box-shadow:inset 0 0 0 1px currentColor}
 .ap-page .ap-pill.dim{opacity:.45}
 .ap-page .ap-pill.dim:hover{opacity:.8}
-.ap-hint{margin-top:6px;font-size:15px;color:var(--n-fa)}
+.ap-hint{margin-top:10px;font-size:16px;line-height:1.5;color:#98A1AE}
 
 /* cards anchor */
 .ap-tiles-row{display:flex;gap:24px;align-items:flex-start}
@@ -68,16 +90,21 @@
 .ap-board{display:grid;grid-template-columns:repeat(5,minmax(216px,1fr));gap:12px;align-items:start}
 .ap-col{background:#FAFAFA;border-radius:12px;padding:0 10px 10px;display:flex;flex-direction:column;gap:16px;min-height:640px}
 .ap-col-head{position:sticky;top:60px;z-index:1;background:#FAFAFA;padding:12px 0 4px;display:flex;flex-direction:column;gap:8px;border-radius:12px 12px 0 0}
-.ap-col-title{display:flex;align-items:center;gap:8px;padding:0 4px;min-height:24px}
+.ap-col-title{display:flex;align-items:center;gap:6px;padding:2px 4px;min-height:25px}
+.ap-col-tools{display:flex;align-items:center;margin-right:-3px}
 .ap-col-title h3{font-size:14px;font-weight:500;color:#171717;white-space:nowrap}
-.ap-col-title h3{overflow:hidden;text-overflow:ellipsis}
+.ap-col-title h3{overflow:hidden;text-overflow:ellipsis;min-width:0;line-height:1.5}
 .ap-col-sub{display:flex;gap:8px;padding:0 4px;margin-top:-6px;font-size:12px;color:var(--n-mu);white-space:nowrap}
 .ap-col-sub .cnt.hit{color:var(--n-acc);font-weight:500}
 .ap-col-sub .cnt.none{color:var(--n-fa)}
 .ap-col-sub .val{color:var(--n-fa)}
 .ap-col-sub .val::before{content:"·";margin-right:8px;color:var(--n-line2)}
-.ap-page .ap-ico{width:20px;height:20px;border-radius:5px;display:grid;place-items:center;color:#A3A3A3}
-.ap-page .ap-ico:hover{background:rgba(0,0,0,.05);color:#404040}
+.ap-page .ap-ico{position:relative;width:20px;height:20px;border-radius:5px;display:grid;place-items:center;color:#737373}
+.ap-page .ap-ico[aria-expanded=true]{background:rgba(0,0,0,.06);color:#171717}
+.ap-page .ap-ico.active{color:var(--n-acc)}
+.ap-ico-dot{position:absolute;top:1px;right:1px;width:5px;height:5px;border-radius:50%;background:var(--n-acc);box-shadow:0 0 0 1.5px #FAFAFA}
+.ap-page .ap-ico:hover{background:rgba(0,0,0,.05);color:#171717}
+.ap-seg-empty{flex:1;height:6px;border-radius:2px;background:#EDEDED}
 .ap-strip{position:relative;display:flex;gap:2px;height:10px;align-items:center}
 .ap-page .ap-seg-bar{height:6px;min-width:6px;border-radius:2px;transition:height .12s,opacity .12s;cursor:pointer}
 .ap-page .ap-seg-bar:hover,.ap-page .ap-seg-bar:focus-visible{height:10px}
@@ -130,7 +157,3 @@
 .ap-meta .lnk:hover .t{color:#171717;text-decoration-color:currentColor}
 .ap-av{position:absolute;right:12px;bottom:12px;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:600}
 .ap-meta .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
-.ap-page .ap-col-open{display:flex;align-items:center;gap:4px;min-width:0;border-radius:5px;padding:0 2px;margin-left:-2px}
-.ap-page .ap-col-open svg{color:#A3A3A3;opacity:0;transition:opacity .12s;flex:none}
-.ap-page .ap-col-open:hover svg{opacity:1}
-.ap-page .ap-col-open h3{min-width:0}
