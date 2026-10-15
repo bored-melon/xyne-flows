@@ -23,7 +23,7 @@ export interface Card {
   id: string;
   col: ColId;
   status: string;
-  /** Who it waits on, e.g. "L2" or "CFO" */
+  /** Who it waits on, e.g. "L2" or "CFO". Not shown on the card. */
   sub?: string;
   title: string;
   /** Value in INR, used for totals */
@@ -31,7 +31,8 @@ export interface Card {
   /** How the amount reads on the card when it isn't a plain INR figure */
   disp?: string;
   date: string;
-  link?: string;
+  /** For purchase orders: the request it was raised from */
+  pr?: string;
   owner: string;
 }
 
@@ -66,7 +67,7 @@ export const COLUMNS: Column[] = [
     noun: "purchase orders",
     statuses: [
       { name: "Pending", tone: "amber" },
-      { name: "Sent", tone: "blue" },
+      { name: "Sent", tone: "neutral" },
       { name: "Partly received", tone: "violet" },
       { name: "Received", tone: "green" },
       { name: "Rejected", tone: "red" },
@@ -160,7 +161,7 @@ const RAW: Record<ColId, Row[]> = {
     ["PO-1176", "Received", "", "Pantry supplies — Sodexo, September", 162400, "", "Received 3 Oct", "REQ-2051", "Sana Rao"],
     ["PO-1185", "Received", "", "Figma Enterprise — 40 seats", 604800, "USD 7,200", "Live 12 Oct", "REQ-2031", "Vikram Mehta"],
     ["PO-1183", "Received", "", "Diwali hampers × 500 — Giftbay", 1180000, "", "Received 6 Oct", "REQ-2029", "Sana Rao"],
-    ["PO-1171", "Received", "", "Shipments — Blue Dart, September", 194700, "", "Received 30 Sep", "REQ-2066", "Sana Rao"],
+    ["PO-1171", "Received", "", "Shipments — Blue Dart, September", 194700, "", "Received 30 Sep", "REQ-2034", "Sana Rao"],
     ["PO-1190", "Rejected", "", "Cafeteria services — Sodexo, Q3", 1440000, "", "Rejected 12 Oct", "REQ-2064", "Sana Rao"],
   ],
   grn: [
@@ -221,10 +222,18 @@ export const CARDS: Card[] = (Object.keys(RAW) as ColId[]).flatMap((col) =>
     amt,
     disp: disp || undefined,
     date,
-    link: link || undefined,
+    pr: col === "po" ? link.match(/REQ-\d+/)?.[0] : undefined,
     owner,
   })),
 );
+
+/** POs raised from the same request. Only these cards carry a link: "REQ-2041 · 2 of 3 POs". */
+const PO_BY_PR = CARDS.reduce<Record<string, string[]>>((m, c) => (c.pr && (m[c.pr] ||= []).push(c.id), m), {});
+Object.values(PO_BY_PR).forEach((ids) => ids.sort());
+export const sharedPr = (c: Card) => {
+  const ids = c.pr ? PO_BY_PR[c.pr] : undefined;
+  return ids && ids.length > 1 ? { pr: c.pr!, label: `${c.pr} · ${ids.indexOf(c.id) + 1} of ${ids.length} POs` } : undefined;
+};
 
 /** A filter key is one status in one column, e.g. "po:Pending". */
 export const fkey = (col: ColId, status: string) => `${col}:${status}`;

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
 import { Icon } from "@/lib/icons";
 import { SearchBar } from "../v2/ui";
 import { use2 } from "../v2/store";
-import { CARDS, COLUMNS, avatarColors, fkey, initials, inr, inrShort, toneOf, type Card, type Column, type Tone } from "./data";
+import { CARDS, COLUMNS, avatarColors, fkey, initials, inr, inrShort, sharedPr, toneOf, type Card, type Column, type Tone } from "./data";
 import "./ap.css";
 
 /* Payables › Procurement: a summary anchor over a kanban of the five procurement documents.
@@ -38,32 +38,28 @@ const LABEL = (key: string) => {
   return `${COLUMNS.find((c) => c.id === col)!.title} · ${st}`;
 };
 
-/* The anchor's tags. Each is a group of keys across the boards. */
+/* The anchor's tags. Each is a group of keys across the boards, and every key in a group
+   shares one colour, so a tag always looks like the cards it brings up. */
 const T = {
-  requests: colKeys(COLUMNS[0]),
   approvers: ["pr:Pending", "po:Pending", "bill:Pending"],
-  compare: ["rfq:Received", "rfq:Evaluating"],
+  compare: ["rfq:Received"],
   mismatch: ["bill:Mismatch"],
-  approvedBills: ["bill:Approved"],
-  team: ["pr:Draft", "rfq:Received", "rfq:Evaluating", "grn:Submitted", "bill:Received"],
+  paid: ["bill:Paid"],
+  team: ["rfq:Received", "grn:Submitted", "bill:Approved"],
   vendors: ["rfq:Awaiting", "po:Sent"],
   fix: ["pr:Rejected", "po:Rejected", "grn:Rejected", "bill:Mismatch"],
 };
 
-const SENTENCE_TAGS: Tag[] = [
-  { id: "requests", name: "All requests", keys: T.requests, tone: "neutral" },
-  { id: "approvers", name: "Waiting on approvers", keys: T.approvers, tone: "amber" },
-  { id: "compare", name: "Quotes to compare", keys: T.compare, tone: "blue" },
-  { id: "mismatch", name: "Mismatched bills", keys: T.mismatch, tone: "red" },
-  { id: "approvedBills", name: "Approved bills", keys: T.approvedBills, tone: "green" },
-];
+/** A tag takes its colour from the statuses it filters. */
+const tag = (id: keyof typeof T, name: string): Tag => {
+  const tones = new Set(T[id].map((k) => toneOf(k.split(":")[0] as Card["col"], k.split(":")[1])));
+  if (tones.size > 1) console.warn(`[procurement] tag "${name}" mixes colours: ${[...tones].join(", ")}`);
+  return { id, name, keys: T[id], tone: [...tones][0] };
+};
 
-const CARD_TAGS: Tag[] = [
-  { id: "team", name: "Needs your team", keys: T.team, tone: "blue" },
-  { id: "approvers", name: "With approvers", keys: T.approvers, tone: "amber" },
-  { id: "vendors", name: "With vendors", keys: T.vendors, tone: "neutral" },
-  { id: "fix", name: "Needs a fix", keys: T.fix, tone: "red" },
-];
+const SENTENCE_TAGS: Tag[] = [tag("approvers", "Waiting on approvers"), tag("compare", "Quotes to compare"), tag("mismatch", "Mismatched bills"), tag("paid", "Paid bills")];
+
+const CARD_TAGS: Tag[] = [tag("team", "Needs your team"), tag("approvers", "With approvers"), tag("vendors", "With vendors"), tag("fix", "Needs a fix")];
 
 /** The sidebar page each board opens */
 const PAGE: Record<Column["id"], string> = { pr: "Purchase requests", rfq: "Quotations", po: "Purchase orders", grn: "GRNs", bill: "Bills" };
@@ -144,7 +140,7 @@ function Quarter() {
   return (
     <button type="button" className="ap-quarter">
       This quarter
-      <Icon n="chevD" s={14} />
+      <Icon n="chevD" s={16} />
     </button>
   );
 }
@@ -154,24 +150,25 @@ function Pill({ tag, label, sel, toggle }: { tag: Tag; label: string; sel: Sel; 
   return (
     <button type="button" className={`ap-pill ${tag.tone}` + (on ? " on" : "") + (sel.size && !on ? " dim" : "")} aria-pressed={on} onClick={() => toggle(tag.keys)} title={on ? `Remove “${tag.name}”` : `Show ${tag.name.toLowerCase()}`}>
       {label}
-      {on && <Icon n="x" s={18} w={2.4} />}
+      {on && <Icon n="x" s={28} w={1.75} />}
     </button>
   );
 }
 
 function SentenceAnchor({ sel, toggle }: { sel: Sel; toggle: (k: string[]) => void }) {
-  const [req, appr, cmp, mis, ok] = SENTENCE_TAGS;
+  const [appr, cmp, mis, paid] = SENTENCE_TAGS;
   const plural = (k: number, one: string, many: string) => `${k} ${k === 1 ? one : many}`;
+  const requests = CARDS.filter((c) => c.col === "pr");
+  const pill = (t: Tag, one: string, many: string) => <Pill tag={t} label={plural(n(t.keys), one, many)} sel={sel} toggle={toggle} />;
   return (
     <section className="ap-sentence" aria-label="Summary">
       <Quarter />
       <div className="grow">
         <p className="ap-sentence-text">
-          Your team raised <Pill tag={req} label={plural(n(req.keys), "request", "requests")} sel={sel} toggle={toggle} /> worth {inrShort(v(req.keys))}.{" "}
-          <Pill tag={appr} label={plural(n(appr.keys), "document", "documents")} sel={sel} toggle={toggle} /> {n(appr.keys) === 1 ? "is" : "are"} waiting on approvers,{" "}
-          <Pill tag={cmp} label={plural(n(cmp.keys), "quote", "quotes")} sel={sel} toggle={toggle} /> {n(cmp.keys) === 1 ? "is" : "are"} ready to compare, and{" "}
-          <Pill tag={mis} label={plural(n(mis.keys), "bill", "bills")} sel={sel} toggle={toggle} /> {n(mis.keys) === 1 ? "doesn’t" : "don’t"} match {n(mis.keys) === 1 ? "its order" : "their orders"}.{" "}
-          <Pill tag={ok} label={plural(n(ok.keys), "bill", "bills")} sel={sel} toggle={toggle} /> {n(ok.keys) === 1 ? "has" : "have"} been approved.
+          Your team raised <span className="ap-strong">{plural(requests.length, "request", "requests")}</span> worth {inrShort(requests.reduce((t, c) => t + c.amt, 0))}.{" "}
+          {pill(appr, "document", "documents")} {n(appr.keys) === 1 ? "is" : "are"} waiting on approvers, {pill(cmp, "quote", "quotes")} {n(cmp.keys) === 1 ? "is" : "are"} ready to compare, and{" "}
+          {pill(mis, "bill", "bills")} {n(mis.keys) === 1 ? "doesn’t" : "don’t"} match {n(mis.keys) === 1 ? "its order" : "their orders"}. {pill(paid, "bill", "bills")} worth {inrShort(v(paid.keys))}{" "}
+          {n(paid.keys) === 1 ? "has" : "have"} been paid.
         </p>
         {!sel.size && <p className="ap-hint">Click a highlighted number, or a colour strip on a board, to filter. You can pick as many as you like.</p>}
       </div>
@@ -182,7 +179,7 @@ function SentenceAnchor({ sel, toggle }: { sel: Sel; toggle: (k: string[]) => vo
 function CardsAnchor({ sel, toggle }: { sel: Sel; toggle: (k: string[]) => void }) {
   const c = (k: string) => n([k]);
   const subs: Record<string, string> = {
-    team: `${n(T.compare)} quotes · ${c("grn:Submitted")} receipts · ${c("bill:Received")} new bills · ${c("pr:Draft")} drafts`,
+    team: `${c("rfq:Received")} quotes to compare · ${c("grn:Submitted")} receipts to check · ${c("bill:Approved")} bills to pay`,
     approvers: `${inrShort(v(T.approvers))} · oldest waiting 3 days`,
     vendors: `${c("rfq:Awaiting")} RFQs out · ${c("po:Sent")} POs sent, not yet delivered`,
     fix: `${c("bill:Mismatch")} bill mismatches · ${c("pr:Rejected") + c("po:Rejected") + c("grn:Rejected")} rejected documents`,
@@ -349,29 +346,38 @@ function amountText(c: Card) {
 }
 
 function CardView({ c }: { c: Card }) {
+  const { setUi } = use2();
   const tone = toneOf(c.col, c.status);
+  const shared = sharedPr(c);
   return (
     <article className="ap-card" tabIndex={0}>
-      <span className={`ap-status ${tone}`}>
-        {c.status}
-        {c.sub && ` · ${c.sub}`}
-      </span>
-      <span className="id">{c.id}</span>
-      <h4>{c.title}</h4>
+      <span className={`ap-status ${tone}`}>{c.status}</span>
+      <div className="ap-card-head">
+        <span className="id">{c.id}</span>
+        <h4>{c.title}</h4>
+      </div>
       <div className="ap-meta">
         <span>
-          <Icon n="banknote" s={13} />
+          <Icon n="banknote" s={12} w={2} />
           <span className="t">{amountText(c)}</span>
         </span>
         <span>
-          <Icon n="cal" s={13} />
+          <Icon n="cal" s={12} w={2} />
           <span className="t">{c.date}</span>
         </span>
-        {c.link && (
-          <span className="lnk" title={c.link}>
-            <Icon n="link" s={13} />
-            <span className="t">{c.link}</span>
-          </span>
+        {shared && (
+          <button
+            type="button"
+            className="lnk"
+            title={`Open ${shared.pr}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              setUi({ page: PAGE.pr });
+            }}
+          >
+            <Icon n="link" s={12} w={2} />
+            <span className="t">{shared.label}</span>
+          </button>
         )}
       </div>
       <span className="ap-av" style={avatarColors(c.owner)} title={c.owner}>
