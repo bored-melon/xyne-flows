@@ -38,6 +38,8 @@ export interface Card {
   date: string;
   /** For purchase orders: the request it was raised from */
   pr?: string;
+  /** The linked documents as written, e.g. "PO-1187 · REQ-2041" */
+  ref?: string;
   owner: string;
   /** Inherited from the request the document traces back to */
   entity: Entity;
@@ -298,6 +300,7 @@ export const CARDS: Card[] = (Object.keys(RAW) as ColId[]).flatMap((col) =>
       disp: disp || undefined,
       date,
       pr: col === "po" ? link.match(/REQ-\d+/)?.[0] : undefined,
+      ref: link || undefined,
       owner,
       entity,
       dept,
@@ -326,6 +329,9 @@ const group = (n: number) => {
   const rest = s.slice(0, -3).replace(/\B(?=(\d{2})+(?!\d))/g, ",");
   return rest + "," + last3;
 };
+
+/** 1,94,700 — Indian digit grouping, no currency */
+export const grp = (n: number) => group(n);
 
 /** INR 1,94,700 — the exact figure, in Indian grouping */
 export const inr = (n: number) => "INR " + group(n);

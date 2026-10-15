@@ -8,6 +8,8 @@ import { Editor } from "./Editor";
 import { listChanges, Review } from "./Review";
 import { Btn, Modal, Placeholder, Sidebar } from "./ui";
 import { Procurement } from "../ap/Procurement";
+import { ModulePage } from "../ap/ModulePage";
+import { PAGE_TO_COL } from "../ap/modules";
 import "./v2.css";
 
 /** Version 2 · Notifications. Settings › Notifications, then a product's journey editor. */
@@ -49,7 +51,7 @@ export default function AppV2() {
     <Ctx.Provider value={ctx}>
       <div className="n2">
         <Sidebar collapsed={ui.page === "Notifications" && ui.view === "editor"} />
-        <main className="n2-card">{ui.page === "Procurement" ? <Procurement /> : ui.page !== "Notifications" ? <Placeholder key={ui.page} title={ui.page} /> : ui.view === "home" ? <Home /> : <Editor />}</main>
+        <main className="n2-card">{ui.page === "Procurement" ? <Procurement /> : PAGE_TO_COL[ui.page] ? <ModulePage key={ui.page} col={PAGE_TO_COL[ui.page]} /> : ui.page !== "Notifications" ? <Placeholder key={ui.page} title={ui.page} /> : ui.view === "home" ? <Home /> : <Editor />}</main>
       </div>
       {ui.modal === "branding" && Branding()}
       {ui.modal === "publish" && (

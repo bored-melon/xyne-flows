@@ -24,6 +24,12 @@ The app opens on **Payables › Procurement**. In the left nav, Procurement expa
   - A bar under the summary lists the active filters ("Showing 25 of 96 documents"). Remove any one with ×, or use **Clear all** or Esc.
   - Board headers switch to "5 of 19". A board with no matches shows an empty state.
 
+- **Module pages (direction B).** Purchase requests, Quotations, Purchase orders, GRNs and Bills each have a page: a total with two figures, the board's colour strip, status tabs, and a table.
+  - The board's **expand** button morphs the board into its page (View Transitions): the strip stretches, the legend becomes the status tabs, the title moves up and each card grows into its row. The **Procurement ›** breadcrumb plays it in reverse. Browsers without View Transitions, or with reduced motion on, just switch pages.
+  - Status, period, entity and department filters are shared with the kanban (`src/ap/state.ts`), so a filter carries over both ways.
+  - Every column header opens a menu to sort; Status and columns such as Vendor, Requester, Department, Buyer and 3-way match also have a "Show only" checklist with counts. Search, Clear all, Esc and CSV export work on the visible rows.
+  - Table columns and the extra detail they show live in `src/ap/modules.ts`; the page is `src/ap/ModulePage.tsx`.
+
 Every header tag uses one colour, taken from the statuses it filters, so a tag always matches the cards it brings up.
 
 Every number is counted from the sample cards in `src/ap/data.ts`, so the summary, strips and boards always agree.

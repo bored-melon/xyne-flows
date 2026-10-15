@@ -1,9 +1,12 @@
-import { createContext, useContext, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useDialKit } from "dialkit";
 import { Icon } from "@/lib/icons";
 import { SearchBar } from "../v2/ui";
 import { use2 } from "../v2/store";
-import { CARDS, COLUMNS, DEPTS, ENTITIES, avatarColors, fkey, initials, inr, inrShort, sharedPr, toneOf, type Card, type Column, type Tone } from "./data";
+import { CARDS, COLUMNS, avatarColors, fkey, initials, inr, inrShort, sharedPr, toneOf, type Card, type Column, type Tone } from "./data";
+import { HeaderFilters, useMenu } from "./controls";
+import { docName, morph, vt } from "./morph";
+import { ALL_SCOPE, ap, scoped, useAp } from "./state";
 import { Ph } from "./icons";
 import "./ap.css";
 
@@ -61,17 +64,8 @@ interface Tag {
   tone: Tone;
 }
 
-/* The header filters (period, entity, department) pick which documents are in play. Every count on
-   the page is taken from that set, so the sentence, tiles, strips and boards always agree. */
-interface Scope {
-  period: "quarter" | "month";
-  entity: string;
-  dept: string;
-}
-const ALL_SCOPE: Scope = { period: "quarter", entity: "", dept: "" };
-const inScope = (s: Scope) => (c: Card) => (s.period === "quarter" || !c.lastMonth) && (!s.entity || c.entity === s.entity) && (!s.dept || c.dept === s.dept);
-const scoped = (s: Scope) => (s === ALL_SCOPE ? CARDS : CARDS.filter(inScope(s)));
-
+/* The header filters (period, entity, department) pick which documents are in play (see state.ts).
+   Every count on the page is taken from that set, so the sentence, tiles, strips and boards always agree. */
 function stats(cards: Card[]) {
   const byKey = cards.reduce<Record<string, Card[]>>((m, c) => ((m[fkey(c.col, c.status)] ||= []).push(c), m), {});
   return {
@@ -123,36 +117,16 @@ export function Procurement() {
   const anchor: Anchor = dial.Summary.layout === "cards" ? "cards" : "sentence";
   const k = dial["Kanban cards"];
   const card: CardOpts = { tagPos: (k.statusTag as TagPos) || "top-right", amount: k.amount, date: k.date, photo: k.profilePhoto, link: k.linkedRequest };
-  const [sel, setSel] = useState<Sel>(() => new Set());
-  const [scope, setScope] = useState<Scope>(ALL_SCOPE);
+  // Filters live in a small shared store, so they carry over to the module pages and back
+  const { sel, scope } = useAp();
   const st = useMemo(() => stats(scoped(scope)), [scope]);
   const scopeOn = scope !== ALL_SCOPE;
-
-  /** Turn a group of keys on, or off if they are all on already. */
-  const toggle = (keys: string[]) =>
-    setSel((s) => {
-      const next = new Set(s);
-      const all = keys.every((k) => s.has(k));
-      keys.forEach((k) => (all ? next.delete(k) : next.add(k)));
-      return next;
-    });
-  const remove = (keys: string[]) =>
-    setSel((s) => {
-      const next = new Set(s);
-      keys.forEach((k) => next.delete(k));
-      return next;
-    });
-  const clear = () => {
-    setSel(new Set());
-    setScope(ALL_SCOPE);
-  };
+  const toggle = ap.toggle;
+  const remove = ap.remove;
+  const clear = ap.clear;
 
   useEffect(() => {
-    const esc = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
-      setSel((s) => (s.size ? new Set() : s));
-      setScope(ALL_SCOPE);
-    };
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && ap.clear();
     document.addEventListener("keydown", esc);
     return () => document.removeEventListener("keydown", esc);
   }, []);
@@ -170,7 +144,7 @@ export function Procurement() {
 
         <StatsCtx.Provider value={st}>
           <section className="ap-summary" aria-label="Summary">
-            <HeaderFilters scope={scope} setScope={setScope} />
+            <HeaderFilters />
             {anchor === "sentence" ? <SentenceAnchor sel={sel} toggle={toggle} /> : <CardsAnchor sel={sel} toggle={toggle} />}
           </section>
 
@@ -185,103 +159,6 @@ export function Procurement() {
           </div>
         </StatsCtx.Provider>
       </div>
-    </div>
-  );
-}
-
-/** Open/close for a small menu: closes on an outside click, and Esc closes it before it clears filters. */
-function useMenu() {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const down = (e: MouseEvent) => ref.current && !ref.current.contains(e.target as Node) && setOpen(false);
-    const key = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
-      e.stopPropagation();
-      setOpen(false);
-    };
-    document.addEventListener("mousedown", down);
-    window.addEventListener("keydown", key, true);
-    return () => {
-      document.removeEventListener("mousedown", down);
-      window.removeEventListener("keydown", key, true);
-    };
-  }, [open]);
-  return { open, setOpen, ref };
-}
-
-interface Opt {
-  value: string;
-  label: string;
-  count: number;
-}
-
-function Dropdown({ name, value, opts, onChange }: { name: string; value: string; opts: Opt[]; onChange: (v: string) => void }) {
-  const m = useMenu();
-  const cur = opts.find((o) => o.value === value) || opts[0];
-  return (
-    <div className="ap-dd" ref={m.ref}>
-      <button type="button" className={"ap-filter-btn" + (value !== opts[0].value ? " set" : "")} aria-haspopup="listbox" aria-expanded={m.open} aria-label={`${name}: ${cur.label}`} onClick={() => m.setOpen(!m.open)}>
-        {cur.label}
-        <Icon n="chevD" s={16} />
-      </button>
-      {m.open && (
-        <div className="ap-menu" role="listbox" aria-label={name}>
-          <div className="ap-menu-h">{name}</div>
-          {opts.map((o) => (
-            <button
-              key={o.value}
-              type="button"
-              role="option"
-              aria-selected={o.value === value}
-              className={o.value === value ? "on" : ""}
-              onClick={() => {
-                onChange(o.value);
-                m.setOpen(false);
-              }}
-            >
-              <span className="grow">{o.label}</span>
-              <span className="ap-menu-n">{o.count}</span>
-              <span className="ap-menu-tick">{o.value === value && <Icon n="check" s={14} w={2} />}</span>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/** Period, entity and department. Option counts are what each choice would show, given the other two. */
-function HeaderFilters({ scope, setScope }: { scope: Scope; setScope: (s: Scope) => void }) {
-  const count = (s: Scope) => CARDS.filter(inScope(s)).length;
-  const set = (patch: Partial<Scope>) => {
-    const next = { ...scope, ...patch };
-    setScope(next.period === "quarter" && !next.entity && !next.dept ? ALL_SCOPE : next);
-  };
-  return (
-    <div className="ap-filters-row">
-      <Dropdown
-        name="Period"
-        value={scope.period}
-        opts={[
-          { value: "quarter", label: "This quarter", count: count({ ...scope, period: "quarter" }) },
-          { value: "month", label: "This month", count: count({ ...scope, period: "month" }) },
-        ]}
-        onChange={(v) => set({ period: v as Scope["period"] })}
-      />
-      <Dropdown
-        name="Entity"
-        value={scope.entity}
-        opts={[{ value: "", label: "All entities", count: count({ ...scope, entity: "" }) }, ...ENTITIES.map((e) => ({ value: e, label: e, count: count({ ...scope, entity: e }) }))]}
-        onChange={(v) => set({ entity: v })}
-      />
-      <Dropdown
-        name="Department"
-        value={scope.dept}
-        opts={[{ value: "", label: "All departments", count: count({ ...scope, dept: "" }) }, ...DEPTS.map((d) => ({ value: d, label: d, count: count({ ...scope, dept: d }) }))]}
-        onChange={(v) => set({ dept: v })}
-      />
     </div>
   );
 }
@@ -423,6 +300,8 @@ function FilterBar({ sel, tags, shown, scopeOn, remove, clear }: { sel: Sel; tag
 
 function Board({ col, sel, toggle, card }: { col: Column; sel: Sel; toggle: (k: string[]) => void; card: CardOpts }) {
   const { setUi } = use2();
+  // While this board animates to or from its page, its parts carry the page's view-transition names
+  const named = useAp().morph === col.id;
   const { cards, n, v } = useStats();
   const [hover, setHover] = useState<string | null>(null);
   const all = useMemo(() => cards.filter((c) => c.col === col.id), [cards, col.id]);
@@ -445,13 +324,13 @@ function Board({ col, sel, toggle, card }: { col: Column; sel: Sel; toggle: (k: 
   const tip = segs.find((s) => s.key === hover);
 
   return (
-    <section className="ap-col" aria-label={col.title}>
+    <section className="ap-col" aria-label={col.title} style={vt(named, "ap-surface", "ap-fill")}>
       <div className="ap-col-head">
         <div className="ap-col-title">
-          <h3>{col.title}</h3>
+          <h3 style={vt(named, "ap-title")}>{col.title}</h3>
           <span className="grow" />
           <div className="ap-col-tools">
-            <button type="button" className="ap-ico" title={`Open ${PAGE[col.id]}`} aria-label={`Open ${PAGE[col.id]}`} onClick={() => setUi({ page: PAGE[col.id] })}>
+            <button type="button" className="ap-ico" title={`Open ${PAGE[col.id]}`} aria-label={`Open ${PAGE[col.id]}`} onClick={() => morph(col.id, () => setUi({ page: PAGE[col.id] }))}>
               <Ph n="expand" />
             </button>
             <BoardFilter col={col} counts={counts} sel={sel} toggle={toggle} active={mine.length > 0} />
@@ -462,7 +341,7 @@ function Board({ col, sel, toggle, card }: { col: Column; sel: Sel; toggle: (k: 
           <span className={"cnt" + (filtered ? (visible.length ? " hit" : " none") : "")}>{filtered ? `${visible.length} of ${total}` : `${total} ${total === 1 ? col.noun.replace(/s$/, "") : col.noun}`}</span>
           <span className="val">{inrShort(sum)}</span>
         </div>
-        <div className="ap-strip" onMouseLeave={() => setHover(null)}>
+        <div className="ap-strip" onMouseLeave={() => setHover(null)} style={vt(named, "ap-strip", "ap-fill")}>
           {segs.map((s) => {
             const on = sel.has(s.key);
             return (
@@ -491,7 +370,7 @@ function Board({ col, sel, toggle, card }: { col: Column; sel: Sel; toggle: (k: 
             </span>
           )}
         </div>
-        <div className="ap-legend">
+        <div className="ap-legend" style={vt(named, "ap-tabs", "ap-nat")}>
           {counts.map((s) => {
             const on = sel.has(s.key);
             return (
@@ -505,7 +384,7 @@ function Board({ col, sel, toggle, card }: { col: Column; sel: Sel; toggle: (k: 
       </div>
       <div className="ap-cards">
         {ordered.map((c) => (
-          <CardView key={c.id} c={c} o={card} />
+          <CardView key={c.id} c={c} o={card} named={named} />
         ))}
         {!ordered.length && <div className="ap-empty">No {col.noun} match these filters</div>}
       </div>
@@ -597,7 +476,7 @@ function amountText(c: Card) {
   return est ? `${base} est.` : base;
 }
 
-function CardView({ c, o }: { c: Card; o: CardOpts }) {
+function CardView({ c, o, named }: { c: Card; o: CardOpts; named?: boolean }) {
   const { setUi } = use2();
   const tone = toneOf(c.col, c.status);
   const shared = o.link ? sharedPr(c) : undefined;
@@ -609,7 +488,7 @@ function CardView({ c, o }: { c: Card; o: CardOpts }) {
     </span>
   );
   return (
-    <article className={`ap-card tag-${o.tagPos}` + (o.photo && hasMeta ? " has-av" : "")} tabIndex={0}>
+    <article className={`ap-card tag-${o.tagPos}` + (o.photo && hasMeta ? " has-av" : "")} tabIndex={0} style={vt(!!named, docName(c.id), "ap-doc")}>
       {o.tagPos === "top-right" && status}
       <div className="ap-card-head">
         <span className="ap-card-idrow">
