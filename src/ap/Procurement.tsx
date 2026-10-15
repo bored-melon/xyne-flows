@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useDialKit } from "dialkit";
 import { Icon } from "@/lib/icons";
 import { SearchBar } from "../v2/ui";
 import { use2 } from "../v2/store";
@@ -10,7 +11,46 @@ import "./ap.css";
    add and remove keys from the same set, so any number of filters can be on at once. */
 
 type Anchor = "sentence" | "cards";
+type TagPos = "top-right" | "before-id" | "after-id" | "bottom-left";
 type Sel = Set<string>;
+
+/* Design dials, in the DialKit panel (bottom-left button) under "Procurement". */
+const DIALS = {
+  Summary: {
+    layout: {
+      type: "select" as const,
+      options: [
+        { value: "sentence", label: "Sentence" },
+        { value: "cards", label: "Cards" },
+      ],
+      default: "sentence",
+    },
+  },
+  "Kanban cards": {
+    statusTag: {
+      type: "select" as const,
+      options: [
+        { value: "top-right", label: "Top right" },
+        { value: "before-id", label: "Before ID" },
+        { value: "after-id", label: "After ID" },
+        { value: "bottom-left", label: "Bottom left" },
+      ],
+      default: "top-right",
+    },
+    amount: true,
+    date: true,
+    profilePhoto: true,
+    linkedRequest: true,
+  },
+};
+
+interface CardOpts {
+  tagPos: TagPos;
+  amount: boolean;
+  date: boolean;
+  photo: boolean;
+  link: boolean;
+}
 
 interface Tag {
   id: string;
@@ -19,15 +59,6 @@ interface Tag {
   keys: string[];
   tone: Tone;
 }
-
-const ANCHOR_KEY = "xyne.ap.anchor";
-const readAnchor = (): Anchor => {
-  try {
-    return localStorage.getItem(ANCHOR_KEY) === "cards" ? "cards" : "sentence";
-  } catch {
-    return "sentence";
-  }
-};
 
 const BY_KEY = CARDS.reduce<Record<string, Card[]>>((m, c) => ((m[fkey(c.col, c.status)] ||= []).push(c), m), {});
 const n = (keys: string[]) => keys.reduce((s, k) => s + (BY_KEY[k]?.length || 0), 0);
@@ -67,16 +98,11 @@ const PAGE: Record<Column["id"], string> = { pr: "Purchase requests", rfq: "Quot
 const isOn = (sel: Sel, keys: string[]) => keys.length > 0 && keys.every((k) => sel.has(k));
 
 export function Procurement() {
-  const [anchor, setAnchorState] = useState<Anchor>(readAnchor);
+  const dial = useDialKit("Procurement", DIALS, { id: "procurement", persist: { key: "xyne:procurement-dials" } });
+  const anchor: Anchor = dial.Summary.layout === "cards" ? "cards" : "sentence";
+  const k = dial["Kanban cards"];
+  const card: CardOpts = { tagPos: (k.statusTag as TagPos) || "top-right", amount: k.amount, date: k.date, photo: k.profilePhoto, link: k.linkedRequest };
   const [sel, setSel] = useState<Sel>(() => new Set());
-  const setAnchor = (a: Anchor) => {
-    setAnchorState(a);
-    try {
-      localStorage.setItem(ANCHOR_KEY, a);
-    } catch {
-      /* private window */
-    }
-  };
 
   /** Turn a group of keys on, or off if they are all on already. */
   const toggle = (keys: string[]) =>
@@ -109,15 +135,6 @@ export function Procurement() {
       <div className="ap-main">
         <div className="ap-head">
           <h1 className="n2-h1">Procurement</h1>
-          <span className="grow" />
-          <span className="ap-seg-label">Summary</span>
-          <div className="ap-seg" role="radiogroup" aria-label="Summary style">
-            {(["sentence", "cards"] as Anchor[]).map((a) => (
-              <button key={a} type="button" role="radio" aria-checked={anchor === a} className={anchor === a ? "on" : ""} onClick={() => setAnchor(a)}>
-                {a === "sentence" ? "Sentence" : "Cards"}
-              </button>
-            ))}
-          </div>
         </div>
 
         {anchor === "sentence" ? <SentenceAnchor sel={sel} toggle={toggle} /> : <CardsAnchor sel={sel} toggle={toggle} />}
@@ -127,7 +144,7 @@ export function Procurement() {
         <div className="ap-board-wrap">
           <div className="ap-board">
             {COLUMNS.map((col) => (
-              <Board key={col.id} col={col} sel={sel} toggle={toggle} />
+              <Board key={col.id} col={col} sel={sel} toggle={toggle} card={card} />
             ))}
           </div>
         </div>
@@ -246,7 +263,7 @@ function FilterBar({ sel, tags, shown, remove, clear }: { sel: Sel; tags: Tag[];
   );
 }
 
-function Board({ col, sel, toggle }: { col: Column; sel: Sel; toggle: (k: string[]) => void }) {
+function Board({ col, sel, toggle, card }: { col: Column; sel: Sel; toggle: (k: string[]) => void; card: CardOpts }) {
   const { setUi } = use2();
   const [hover, setHover] = useState<string | null>(null);
   const strip = useRef<HTMLDivElement>(null);
@@ -330,7 +347,7 @@ function Board({ col, sel, toggle }: { col: Column; sel: Sel; toggle: (k: string
       </div>
       <div className="ap-cards">
         {ordered.map((c) => (
-          <CardView key={c.id} c={c} />
+          <CardView key={c.id} c={c} o={card} />
         ))}
         {!ordered.length && <div className="ap-empty">No {col.noun} match these filters</div>}
       </div>
@@ -345,44 +362,67 @@ function amountText(c: Card) {
   return est ? `${base} est.` : base;
 }
 
-function CardView({ c }: { c: Card }) {
+function CardView({ c, o }: { c: Card; o: CardOpts }) {
   const { setUi } = use2();
   const tone = toneOf(c.col, c.status);
-  const shared = sharedPr(c);
+  const shared = o.link ? sharedPr(c) : undefined;
+  const status = <span className={`ap-status ${tone}`}>{c.status}</span>;
+  const hasMeta = o.amount || o.date || !!shared;
+  const avatar = (
+    <span className="ap-av" style={avatarColors(c.owner)} title={c.owner}>
+      {initials(c.owner)}
+    </span>
+  );
   return (
-    <article className="ap-card" tabIndex={0}>
-      <span className={`ap-status ${tone}`}>{c.status}</span>
+    <article className={`ap-card tag-${o.tagPos}` + (o.photo && hasMeta ? " has-av" : "")} tabIndex={0}>
+      {o.tagPos === "top-right" && status}
       <div className="ap-card-head">
-        <span className="id">{c.id}</span>
+        <span className="ap-card-idrow">
+          {o.tagPos === "before-id" && status}
+          <span className="id">{c.id}</span>
+          {o.tagPos === "after-id" && status}
+        </span>
         <h4>{c.title}</h4>
       </div>
-      <div className="ap-meta">
-        <span>
-          <Icon n="banknote" s={12} w={2} />
-          <span className="t">{amountText(c)}</span>
-        </span>
-        <span>
-          <Icon n="cal" s={12} w={2} />
-          <span className="t">{c.date}</span>
-        </span>
-        {shared && (
-          <button
-            type="button"
-            className="lnk"
-            title={`Open ${shared.pr}`}
-            onClick={(e) => {
-              e.stopPropagation();
-              setUi({ page: PAGE.pr });
-            }}
-          >
-            <Icon n="link" s={12} w={2} />
-            <span className="t">{shared.label}</span>
-          </button>
-        )}
-      </div>
-      <span className="ap-av" style={avatarColors(c.owner)} title={c.owner}>
-        {initials(c.owner)}
-      </span>
+      {hasMeta && (
+        <div className="ap-meta">
+          {o.amount && (
+            <span>
+              <Icon n="banknote" s={12} w={2} />
+              <span className="t">{amountText(c)}</span>
+            </span>
+          )}
+          {o.date && (
+            <span>
+              <Icon n="cal" s={12} w={2} />
+              <span className="t">{c.date}</span>
+            </span>
+          )}
+          {shared && (
+            <button
+              type="button"
+              className="lnk"
+              title={`Open ${shared.pr}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                setUi({ page: PAGE.pr });
+              }}
+            >
+              <Icon n="link" s={12} w={2} />
+              <span className="t">{shared.label}</span>
+            </button>
+          )}
+        </div>
+      )}
+      {/* With details shown, the photo sits beside them; with none, it drops into the footer row */}
+      {o.photo && hasMeta && avatar}
+      {(o.tagPos === "bottom-left" || (o.photo && !hasMeta)) && (
+        <div className="ap-card-foot">
+          {o.tagPos === "bottom-left" && status}
+          <span className="grow" />
+          {o.photo && !hasMeta && avatar}
+        </div>
+      )}
     </article>
   );
 }
