@@ -1,15 +1,13 @@
-import { useState } from "react";
-import { Tuning, type ProtoVersion } from "@/lib/tuning";
-import App from "./App";
+import { DialRoot } from "dialkit";
+import "dialkit/styles.css";
 import AppV2 from "./v2/AppV2";
 
-/** Picks the prototype version from the DialKit panel (Prototype → version). */
+/** Account Payables opens on Payables › Procurement. The DialKit panel (bottom-left) switches its version. */
 export default function Root() {
-  const [version, setVersion] = useState<ProtoVersion>("2");
   return (
     <>
-      {version === "1" ? <App /> : <AppV2 />}
-      <Tuning onVersion={setVersion} />
+      <AppV2 />
+      <DialRoot position="bottom-left" defaultOpen={false} theme="light" productionEnabled />
     </>
   );
 }

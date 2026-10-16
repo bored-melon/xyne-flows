@@ -18,43 +18,22 @@ type Anchor = "sentence" | "cards";
 type TagPos = "top-right" | "before-id" | "after-id" | "bottom-left";
 type Sel = Set<string>;
 
-/* Design dials, in the DialKit panel (bottom-left button) under "Procurement". */
+/* DialKit panel (bottom-left button) → "Procurement": only the design direction. Add other controls only when asked.
+   Version 1 · Sentence header kanban: one line summarising the board, each number a filter.
+   Version 2 · Card header kanban: four tiles grouping the work by who holds it. */
 const DIALS = {
-  Summary: {
-    layout: {
-      type: "select" as const,
-      options: [
-        { value: "sentence", label: "Sentence" },
-        { value: "cards", label: "Cards" },
-      ],
-      default: "sentence",
-    },
-  },
-  "Kanban cards": {
-    style: {
-      type: "select" as const,
-      options: [
-        { value: "classic", label: "Classic" },
-        { value: "compact", label: "Compact" },
-      ],
-      default: "classic",
-    },
-    statusTag: {
-      type: "select" as const,
-      options: [
-        { value: "top-right", label: "Top right" },
-        { value: "before-id", label: "Before ID" },
-        { value: "after-id", label: "After ID" },
-        { value: "bottom-left", label: "Bottom left" },
-      ],
-      default: "top-right",
-    },
-    amount: true,
-    date: true,
-    profilePhoto: true,
-    linkedRequest: true,
+  version: {
+    type: "select" as const,
+    options: [
+      { value: "2", label: "Version 2 · Card header kanban" },
+      { value: "1", label: "Version 1 · Sentence header kanban" },
+    ],
+    default: "2",
   },
 };
+
+/** Card details are fixed while DialKit only switches versions. The compact card (Figma 2945:36423) is kept below; turn it on by setting style to "compact". */
+const CARD: CardOpts = { style: "classic", tagPos: "top-right", amount: true, date: true, photo: true, link: true };
 
 interface CardOpts {
   /** Classic: status chip, ID above the title. Compact (Figma 2945:36423): ID and title on one line, status as a dot row. */
@@ -124,10 +103,9 @@ const NEW: Record<Column["id"], string> = { pr: "New purchase request", rfq: "Ne
 const isOn = (sel: Sel, keys: string[]) => keys.length > 0 && keys.every((k) => sel.has(k));
 
 export function Procurement() {
-  const dial = useDialKit("Procurement", DIALS, { id: "procurement", persist: { key: "xyne:procurement-dials" } });
-  const anchor: Anchor = dial.Summary.layout === "cards" ? "cards" : "sentence";
-  const k = dial["Kanban cards"];
-  const card: CardOpts = { style: k.style === "compact" ? "compact" : "classic", tagPos: (k.statusTag as TagPos) || "top-right", amount: k.amount, date: k.date, photo: k.profilePhoto, link: k.linkedRequest };
+  const dial = useDialKit("Procurement", DIALS, { id: "procurement", persist: { key: "xyne:procurement-version" } });
+  const anchor: Anchor = dial.version === "1" ? "sentence" : "cards";
+  const card = CARD;
   // Filters live in a small shared store, so they carry over to the module pages and back
   const { sel, scope } = useAp();
   const st = useMemo(() => stats(scoped(scope)), [scope]);

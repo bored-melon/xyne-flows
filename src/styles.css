@@ -460,3 +460,6 @@ button.bundle-h:hover b{color:var(--accent)}
 .no-inbox-strip .canvas .istrip{display:none}
 .dialkit-root{font-family:var(--font)}
 .layers .legend{padding-left:56px}
+
+/* DialKit: only the version control shows. Its preset menu ("Version 1…") and copy button are hidden so they aren’t mistaken for design versions. */
+.dialkit-panel-toolbar{display:none!important}

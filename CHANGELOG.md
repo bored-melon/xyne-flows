@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.5.0 — 16 Oct 2026 · account-payables
+
+- **Versions in DialKit.** The panel now holds one control, Procurement → version: Version 2 · Card header kanban (default) and Version 1 · Sentence header kanban. The summary-layout, card-style, status-tag and card-detail dials are gone. Cards are fixed to the Classic style with every detail; the Compact card is kept in the code, switched off.
+- **Own folder and port.** This branch lives in `~/Downloads/xyne-flows-account-payables` and always runs on http://localhost:8080. If 8080 is busy it stops with an error instead of moving to another port. Email Studio has its own branch, folder and port (8090). See `WORKFLOW.md`.
+- The Email Studio version switch is no longer shown here.
+
 ## 2.4.0 — 15 Oct 2026 · account-payables
 
 - **Payables › Procurement.** This is the new landing page: a summary anchor above a kanban of purchase requests, quotations, purchase orders, GRNs and bills.

@@ -1,22 +1,31 @@
-# Email Studio → Notifications
+# Account Payables · Payables › Procurement
 
-Version 2.3.0. See `CHANGELOG.md`.
+Version 2.5.0. See `CHANGELOG.md`. How this repo is organised (branches, folders, ports, versions): `WORKFLOW.md`.
 
-The prototype holds two versions. Switch between them from the DialKit panel (the round button in the bottom-left corner) under **Prototype → version**. Version 2 opens by default.
+This folder is the **Account Payables** prototype, on branch `account-payables`. Run `npm run dev` and open **http://localhost:8080**; the app opens on **Payables › Procurement**.
 
-## Payables › Procurement (branch `account-payables`)
+It holds two design directions. Switch between them in the DialKit panel (round button, bottom left) under **Procurement → version**. The panel has no other controls.
+
+| Version | Direction |
+| --- | --- |
+| 2 (default) | **Card header kanban:** four tiles above the boards that group the work by who holds it |
+| 1 | **Sentence header kanban:** one sentence above the boards, each number a filter |
+
+Email Studio is built separately, on branch `email-studio` in `~/Downloads/xyne-flows` (http://localhost:8090). The Email Studio code further down this README is the older copy this app shell grew from.
+
+## Payables › Procurement
 
 The app opens on **Payables › Procurement**. In the left nav, Procurement expands to its documents (Purchase requests, Quotations, Purchase orders, GRNs, Bills), followed by Payments, Vendors and Configurations. Every page except Procurement is still a placeholder.
 
 - **Header filters.** Period (This quarter, This month), Entity (Juspay, Jusbiz) and Department narrow every number on the page: the summary, the strips and the boards. Each document inherits its entity and department from the request it traces back to. Each option shows how many documents it would leave.
-- **Summary anchor.** Choose the style in the DialKit panel (button at the bottom left) under **Procurement › Summary › Layout**. The choice is remembered in the browser.
-  - **Sentence:** one line that summarises the board below, such as "Your team raised 19 requests worth INR 4.35 Cr. 13 documents are waiting on approvers…". Each highlighted number is a filter.
-  - **Cards:** four tiles that group the work by who holds it: Needs your team, With approvers, With vendors and Needs a fix. Each tile is a filter.
+- **Summary anchor.** Each version has its own (DialKit → Procurement → version):
+  - **Version 1 · Sentence:** one line that summarises the board below, such as "Your team raised 19 requests worth INR 4.35 Cr. 13 documents are waiting on approvers…". Each highlighted number is a filter.
+  - **Version 2 · Cards:** four tiles that group the work by who holds it: Needs your team, With approvers, With vendors and Needs a fix. Each tile is a filter.
 - **Kanban.** Five boards: Purchase requests, Quotations, Purchase orders, GRNs and Bills.
   - Each board header shows its count and value, and three buttons: **expand** opens that board's module page, **filter** lists the board's statuses as a checklist (the same filters as its colour strip), and **more** has New … and Export as CSV.
   - A colour strip shows the board's own statuses, sized by count. Hover a segment to see the count and value.
   - Cards show the ID, a status chip, the title, the amount (marked "est." for estimates), a date and the owner. Only purchase orders that share a request show a link to it ("REQ-2041 · 2 of 3 POs").
-  - In DialKit under **Procurement › Kanban cards**: **Style** switches between Classic and Compact (ID and title on one line, status as a dot row, Figma 2945:36423). **Status Tag** moves the chip on Classic cards (Top right, Before ID, After ID, Bottom left), and **Amount**, **Date**, **Profile Photo** and **Linked Request** show or hide each detail.
+  - Cards use the Classic style with every detail shown. The Compact style (ID and title on one line, status as a dot row, Figma 2945:36423) is still in the code (`CARD` in `src/ap/Procurement.tsx`) but switched off while DialKit only holds versions.
 - **Multiple filters.** Filters are a set of board-and-status pairs, and you can combine as many as you like.
   - A header tag adds or removes all of its statuses at once.
   - A strip segment or legend item adds or removes one status.
