@@ -260,3 +260,13 @@
 ::view-transition-new(*.ap-doc),::view-transition-new(*.ap-nat){animation-delay:.12s;animation-duration:.36s;animation-fill-mode:both}
 /* The strip and the board surface stretch to fit */
 ::view-transition-old(*.ap-fill),::view-transition-new(*.ap-fill){width:100%;height:100%}
+
+/* compact card — Figma 2945:36423 */
+.ap-card.compact{gap:10px;border-width:.5px}
+.ap-card.compact h4{font-size:14px;font-weight:500;line-height:1.5;color:#171717}
+.ap-card.compact.has-av .ap-meta{padding-right:32px}
+.ap-meta>.ap-cstat{padding-top:2px}
+.ap-cdot{width:12px;height:12px;flex:none;display:grid;place-items:center}
+.ap-cdot::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--t-neutral)}
+.ap-cdot.amber::before{background:var(--t-amber)}.ap-cdot.green::before{background:var(--t-green)}.ap-cdot.red::before{background:var(--t-red)}.ap-cdot.blue::before{background:var(--t-blue)}.ap-cdot.violet::before{background:var(--t-violet)}
+.ap-card.compact .ap-av{width:24px;height:24px;font-size:10px;right:12px;bottom:14px}

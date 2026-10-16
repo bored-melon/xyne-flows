@@ -16,7 +16,7 @@ The app opens on **Payables › Procurement**. In the left nav, Procurement expa
   - Each board header shows its count and value, and three buttons: **expand** opens that board's module page, **filter** lists the board's statuses as a checklist (the same filters as its colour strip), and **more** has New … and Export as CSV.
   - A colour strip shows the board's own statuses, sized by count. Hover a segment to see the count and value.
   - Cards show the ID, a status chip, the title, the amount (marked "est." for estimates), a date and the owner. Only purchase orders that share a request show a link to it ("REQ-2041 · 2 of 3 POs").
-  - In DialKit under **Procurement › Kanban cards**: **Status Tag** moves the chip (Top right, Before ID, After ID, Bottom left), and **Amount**, **Date**, **Profile Photo** and **Linked Request** show or hide each detail.
+  - In DialKit under **Procurement › Kanban cards**: **Style** switches between Classic and Compact (ID and title on one line, status as a dot row, Figma 2945:36423). **Status Tag** moves the chip on Classic cards (Top right, Before ID, After ID, Bottom left), and **Amount**, **Date**, **Profile Photo** and **Linked Request** show or hide each detail.
 - **Multiple filters.** Filters are a set of board-and-status pairs, and you can combine as many as you like.
   - A header tag adds or removes all of its statuses at once.
   - A strip segment or legend item adds or removes one status.

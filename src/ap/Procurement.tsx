@@ -3,7 +3,7 @@ import { useDialKit } from "dialkit";
 import { Icon } from "@/lib/icons";
 import { SearchBar } from "../v2/ui";
 import { use2 } from "../v2/store";
-import { CARDS, COLUMNS, avatarColors, fkey, initials, inr, inrShort, sharedPr, toneOf, type Card, type Column, type Tone } from "./data";
+import { CARDS, COLUMNS, avatarColors, fkey, grp, initials, inr, inrShort, sharedPr, toneOf, type Card, type Column, type Tone } from "./data";
 import { HeaderFilters, useMenu } from "./controls";
 import { docName, morph, vt } from "./morph";
 import { ALL_SCOPE, ap, scoped, useAp } from "./state";
@@ -31,6 +31,14 @@ const DIALS = {
     },
   },
   "Kanban cards": {
+    style: {
+      type: "select" as const,
+      options: [
+        { value: "classic", label: "Classic" },
+        { value: "compact", label: "Compact" },
+      ],
+      default: "classic",
+    },
     statusTag: {
       type: "select" as const,
       options: [
@@ -49,6 +57,9 @@ const DIALS = {
 };
 
 interface CardOpts {
+  /** Classic: status chip, ID above the title. Compact (Figma 2945:36423): ID and title on one line, status as a dot row. */
+  style: "classic" | "compact";
+  /** Classic only; compact cards list the status with the other details */
   tagPos: TagPos;
   amount: boolean;
   date: boolean;
@@ -116,7 +127,7 @@ export function Procurement() {
   const dial = useDialKit("Procurement", DIALS, { id: "procurement", persist: { key: "xyne:procurement-dials" } });
   const anchor: Anchor = dial.Summary.layout === "cards" ? "cards" : "sentence";
   const k = dial["Kanban cards"];
-  const card: CardOpts = { tagPos: (k.statusTag as TagPos) || "top-right", amount: k.amount, date: k.date, photo: k.profilePhoto, link: k.linkedRequest };
+  const card: CardOpts = { style: k.style === "compact" ? "compact" : "classic", tagPos: (k.statusTag as TagPos) || "top-right", amount: k.amount, date: k.date, photo: k.profilePhoto, link: k.linkedRequest };
   // Filters live in a small shared store, so they carry over to the module pages and back
   const { sel, scope } = useAp();
   const st = useMemo(() => stats(scoped(scope)), [scope]);
@@ -476,7 +487,70 @@ function amountText(c: Card) {
   return est ? `${base} est.` : base;
 }
 
+/** ~₹32.0L for estimates, ₹3,82,320 for exact figures */
+function amountCompact(c: Card) {
+  const est = c.col === "pr" || (c.col === "rfq" && c.status === "Awaiting");
+  const short = (n: number) => (n >= 1e7 ? `₹${(n / 1e7).toFixed(2)} Cr` : n >= 1e5 ? `₹${(n / 1e5).toFixed(1)}L` : `₹${grp(n)}`);
+  const base = c.disp || (est || c.amt >= 1e7 ? short(c.amt) : `₹${grp(c.amt)}`);
+  return est ? `~${base}` : base;
+}
+
+/** Compact card, Figma 2945:36423 */
+function CompactCard({ c, o, named }: { c: Card; o: CardOpts; named?: boolean }) {
+  const { setUi } = use2();
+  const shared = o.link ? sharedPr(c) : undefined;
+  return (
+    <article className={"ap-card compact" + (o.photo ? " has-av" : "")} tabIndex={0} style={vt(!!named, docName(c.id), "ap-doc")}>
+      <h4>
+        {c.id} : {c.title}
+      </h4>
+      <div className="ap-meta">
+        {o.amount && (
+          <span>
+            <Icon n="banknote" s={12} w={2} />
+            <span className="t">{amountCompact(c)}</span>
+          </span>
+        )}
+        {o.date && (
+          <span>
+            <Icon n="cal" s={12} w={2} />
+            <span className="t">{c.date}</span>
+          </span>
+        )}
+        {shared && (
+          <button
+            type="button"
+            className="lnk"
+            title={`Open ${shared.pr}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              setUi({ page: PAGE.pr });
+            }}
+          >
+            <Icon n="link" s={12} w={2} />
+            <span className="t">{shared.label}</span>
+          </button>
+        )}
+        <span className="ap-cstat">
+          <i className={`ap-cdot ${toneOf(c.col, c.status)}`} />
+          <span className="t">{c.status}</span>
+        </span>
+      </div>
+      {o.photo && (
+        <span className="ap-av" style={avatarColors(c.owner)} title={c.owner}>
+          {initials(c.owner)}
+        </span>
+      )}
+    </article>
+  );
+}
+
 function CardView({ c, o, named }: { c: Card; o: CardOpts; named?: boolean }) {
+  if (o.style === "compact") return <CompactCard c={c} o={o} named={named} />;
+  return <ClassicCard c={c} o={o} named={named} />;
+}
+
+function ClassicCard({ c, o, named }: { c: Card; o: CardOpts; named?: boolean }) {
   const { setUi } = use2();
   const tone = toneOf(c.col, c.status);
   const shared = o.link ? sharedPr(c) : undefined;
