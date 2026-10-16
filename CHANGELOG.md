@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.1.0 — 16 Oct 2026
+
+- **DialKit holds only the version.** Email Studio → version switches between Version 3 (Focus canvas), 2 (Notifications) and 1 (Email studio). The old design-tuning dials (canvas, sections, navigation, interface) and the product-page layout dial are gone; Version 3's product page still switches between List and Timeline on the page.
+- **Workflow.** `WORKFLOW.md` explains the two-project setup: Email Studio on branch `email-studio` in `~/Downloads/xyne-flows` (port 8090), Account Payables on branch `account-payables` in `~/Downloads/xyne-flows-account-payables` (port 8080).
+
 ## 3.0.1 — 16 Oct 2026
 
 - **Own port.** Email Studio now runs on http://localhost:8090, so it can run alongside Account Payables (8080). If 8090 is busy it stops with an error instead of quietly moving to another port.

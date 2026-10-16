@@ -1,8 +1,8 @@
 # Email Studio → Notifications
 
-Version 3.0.0. See `CHANGELOG.md`.
+Version 3.1.0. See `CHANGELOG.md`. How this repo is organised (branches, folders, ports, versions): `WORKFLOW.md`.
 
-The prototype holds three versions. Switch between them from the DialKit panel (the round button in the bottom-left corner) under **Prototype → version**. Version 3 opens by default; **Prototype → productPage** picks its product page layout (Table or Timeline), which can also be switched on the page.
+The prototype holds three design directions. Switch between them in the DialKit panel (the round button in the bottom-left corner) under **Email Studio → version**; Version 3 opens by default. The panel has no other controls. Version 3’s product page switches between List and Timeline on the page itself.
 
 ## Version 3 · Focus canvas
 
@@ -91,7 +91,7 @@ It covers four screens:
 - **Digests.** Each persona has one digest template (Employee digest, Approver digest, Admin digest). It lives inside that persona everywhere: the table, layers, canvas and journey. A digest's schedule can turn on hourly (every N hours between two times), daily, weekly and monthly summaries, and each enabled summary appears as a state on the canvas.
 - **Studio → Delivery.** This is the journey map. Each email sits under the stage of the request it belongs to, in the lane of whoever receives it, with a "Summaries" column for the digests. For an event email, timing is **Send instantly** (on/off) plus any of **Hourly / Daily / Weekly / Monthly summary**, so a template can be instant and part of repeating summaries at the same time. Links jump to the summary, with a warning if that summary is off in the digest. Reminders and before-deadline emails keep their own cadence. Quiet hours and channels are set here too. Triggers are locked because they follow the workflow.
 
-- **Design tuning (DialKit).** The round button in the bottom-left corner opens a [DialKit](https://github.com/joshpuckett/dialkit) panel to tune the studio live: canvas colour and dot grid, persona section spacing, radius and fill, gaps between templates and states, zoom behaviour, accent colour, panel widths and the email shadow. Values are kept per browser, and the panel's preset menu can save named presets. The dials are defined in `src/lib/tuning.tsx`, and visual values are applied as CSS variables, so `styles.css` holds the defaults.
+- **DialKit.** The round button in the bottom-left corner opens the [DialKit](https://github.com/joshpuckett/dialkit) panel, which only switches between versions (`src/lib/tuning.tsx`). Version 1's canvas spacing, zoom and colours use the defaults in `styles.css` and `tune`.
 
 **Review & publish** lists every draft change as before/after. You can discard any group, then publish to make the draft live. Undo and redo work everywhere, and ⌘Z / Ctrl+Z work outside text fields.
 
@@ -105,7 +105,7 @@ npm run build    # type-check + production build
 
 ## Stack
 
-- Vite + React 18 + TypeScript. There are no UI libraries, and the icons are inlined. DialKit (with Motion) is used only for the design-tuning panel.
+- Vite + React 18 + TypeScript. There are no UI libraries, and the icons are inlined. DialKit (with Motion) is used only for the version switch.
 - Styling is plain CSS in `src/styles.css`, with design tokens on `:root` (light theme only). The email preview has its own `--e-*` tokens and is always rendered on white, as it would be in an inbox.
 - Tags use one style everywhere (the chip from the Figma email kit: soft tint, 13px text, pill). Use `<Tag tone="green" | "amber" | "red" | "blue" | "purple" | "gray">` from `components/ui.tsx`.
 - The studio canvas has a dot-grid background so it reads as an editing surface.
@@ -127,7 +127,7 @@ src/
     history.ts               undo/redo reducer
   lib/
     utils.ts                 helpers (formatting, labels, contrast check…)
-    tuning.tsx               DialKit design-tuning panel
+    tuning.tsx               DialKit version switch
     changes.ts               draft vs live diff for the review screen
     icons.tsx                icon set
   components/
