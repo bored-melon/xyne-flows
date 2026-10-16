@@ -99,7 +99,7 @@ It covers four screens:
 
 ```bash
 npm install
-npm run dev      # http://localhost:8080
+npm run dev      # http://localhost:8090 (Account Payables uses 8080, so both can run at once)
 npm run build    # type-check + production build
 ```
 

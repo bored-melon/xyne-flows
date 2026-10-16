@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.0.1 — 16 Oct 2026
+
+- **Own port.** Email Studio now runs on http://localhost:8090, so it can run alongside Account Payables (8080). If 8090 is busy it stops with an error instead of quietly moving to another port.
+
 ## 3.0.0 — 14 Oct 2026
 
 Version 3, "Focus canvas", from the Figma direction in Section 6. It is the default in DialKit; versions 2 and 1 are still there.
